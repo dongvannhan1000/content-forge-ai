@@ -24,12 +24,26 @@ export default function GeneratorPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
+  // All hooks must be called before any conditional returns
+  const [mode, setMode] = useState<GenerationMode>('topics');
+  const { articles, addArticle, updateArticle, deleteArticle, setArticles } = useArticles();
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [schedulingArticle, setSchedulingArticle] = useState<Article | null>(null);
+  const { progress, isGenerating, startGeneration, updateProgress, completeGeneration } = useGenerationProgress();
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login');
     }
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    if (articles.length === 0) {
+      setArticles(MOCK_ARTICLES);
+    }
+  }, []);
+
+  // Conditional returns must come AFTER all hooks
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,18 +58,6 @@ export default function GeneratorPage() {
   if (!user) {
     return null;
   }
-
-  const [mode, setMode] = useState<GenerationMode>('topics');
-  const { articles, addArticle, updateArticle, deleteArticle, setArticles } = useArticles();
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [schedulingArticle, setSchedulingArticle] = useState<Article | null>(null);
-  const { progress, isGenerating, startGeneration, updateProgress, completeGeneration } = useGenerationProgress();
-
-  useEffect(() => {
-    if (articles.length === 0) {
-      setArticles(MOCK_ARTICLES);
-    }
-  }, []);
 
   const handleGenerate = async (data: any) => {
     const articleCount = 3;
@@ -133,7 +135,7 @@ export default function GeneratorPage() {
                     {mode === 'image' && <FormImage onGenerate={handleGenerate} />}
                     {mode === 'website' && <FormWebsite onGenerate={handleGenerate} />}
                   </div>
-                  
+
                   <div className="mt-6 pt-6 border-t border-border">
                     <Button
                       onClick={handleDemoBulkGeneration}
