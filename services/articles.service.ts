@@ -11,39 +11,17 @@ import {
     orderBy,
     onSnapshot,
     Timestamp,
-    Query,
     DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Article, GeneratorSettings } from '@/types';
+import { Article } from '@/types';
+import { isFirestoreConfigured, COLLECTIONS, timestampToDate } from './firestore-utils';
 
 /**
- * Firestore Service
+ * Article Service
  * 
- * Purpose: Encapsulates all Firestore database operations.
- * This service centralizes database logic and prevents direct Firestore calls in UI components.
+ * Handles all Firestore operations related to articles
  */
-
-// Check if Firestore is configured
-function isFirestoreConfigured(): boolean {
-    return db !== undefined && db !== null;
-}
-
-// Collection names
-const COLLECTIONS = {
-    ARTICLES: 'articles',
-    USER_SETTINGS: 'userSettings',
-};
-
-/**
- * Convert Firestore Timestamp to Date
- */
-function timestampToDate(timestamp: any): Date {
-    if (timestamp?.toDate) {
-        return timestamp.toDate();
-    }
-    return new Date(timestamp);
-}
 
 /**
  * Convert Article from Firestore format to app format
@@ -54,11 +32,13 @@ function mapFirestoreArticle(id: string, data: DocumentData): Article {
         title: data.title,
         content: data.content,
         imageUrl: data.imageUrl,
+        imagePrompt: data.imagePrompt,
+        topic: data.topic,
         mode: data.mode,
         status: data.status,
         scheduledAt: data.scheduledAt ? timestampToDate(data.scheduledAt) : undefined,
         platforms: data.platforms,
-        createdAt: timestampToDate(data.createdAt),
+        createdAt: data.createdAt ? timestampToDate(data.createdAt) : undefined,
     };
 }
 
@@ -80,8 +60,6 @@ function articleToFirestore(article: Partial<Article>): DocumentData {
 
     return data;
 }
-
-// ========== Article Operations ==========
 
 /**
  * Create a new article
@@ -116,6 +94,8 @@ export async function createArticle(
  * Get a single article by ID
  */
 export async function getArticle(articleId: string): Promise<Article | null> {
+    if (!isFirestoreConfigured()) return null;
+
     try {
         const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
         const docSnap = await getDoc(docRef);
@@ -135,6 +115,8 @@ export async function getArticle(articleId: string): Promise<Article | null> {
  * Get all articles for a user
  */
 export async function getUserArticles(userId: string): Promise<Article[]> {
+    if (!isFirestoreConfigured()) return [];
+
     try {
         const q = query(
             collection(db, COLLECTIONS.ARTICLES),
@@ -159,6 +141,10 @@ export async function updateArticle(
     articleId: string,
     updates: Partial<Article>
 ): Promise<void> {
+    if (!isFirestoreConfigured()) {
+        throw new Error('Firestore is not configured');
+    }
+
     try {
         const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
         const updateData = articleToFirestore(updates);
@@ -177,6 +163,10 @@ export async function updateArticle(
  * Delete an article
  */
 export async function deleteArticle(articleId: string): Promise<void> {
+    if (!isFirestoreConfigured()) {
+        throw new Error('Firestore is not configured');
+    }
+
     try {
         const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
         await deleteDoc(docRef);
@@ -211,73 +201,5 @@ export function subscribeToUserArticles(
             mapFirestoreArticle(doc.id, doc.data())
         );
         callback(articles);
-    });
-}
-
-// ========== User Settings Operations ==========
-
-/**
- * Get user settings
- */
-export async function getUserSettings(userId: string): Promise<GeneratorSettings | null> {
-    try {
-        const docRef = doc(db, COLLECTIONS.USER_SETTINGS, userId);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
-            return null;
-        }
-
-        return docSnap.data() as GeneratorSettings;
-    } catch (error: any) {
-        console.error('Error getting user settings:', error);
-        throw new Error(error.message || 'Failed to get settings');
-    }
-}
-
-/**
- * Save user settings
- */
-export async function saveUserSettings(
-    userId: string,
-    settings: GeneratorSettings
-): Promise<void> {
-    try {
-        const docRef = doc(db, COLLECTIONS.USER_SETTINGS, userId);
-        await updateDoc(docRef, settings as DocumentData).catch(async () => {
-            // If document doesn't exist, create it
-            await addDoc(collection(db, COLLECTIONS.USER_SETTINGS), {
-                ...settings,
-                userId,
-            });
-        });
-    } catch (error: any) {
-        console.error('Error saving user settings:', error);
-        throw new Error(error.message || 'Failed to save settings');
-    }
-}
-
-/**
- * Subscribe to real-time updates for user settings
- * Returns an unsubscribe function
- */
-export function subscribeToUserSettings(
-    userId: string,
-    callback: (settings: GeneratorSettings | null) => void
-): () => void {
-    if (!isFirestoreConfigured()) {
-        console.warn('Firestore is not configured. Please set up your .env.local file.');
-        callback(null);
-        return () => { }; // No-op unsubscribe
-    }
-
-    const docRef = doc(db, COLLECTIONS.USER_SETTINGS, userId);
-
-    return onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            callback(docSnap.data() as GeneratorSettings);
-        } else {
-            callback(null);
-        }
     });
 }

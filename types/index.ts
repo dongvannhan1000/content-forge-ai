@@ -5,11 +5,55 @@ export interface Article {
   title: string;
   content: string;
   imageUrl?: string;
-  mode: GenerationMode;
-  status: 'draft' | 'scheduled' | 'published';
+  imagePrompt?: string;
+  topic?: string;
+  mode?: GenerationMode;
+  status?: 'draft' | 'scheduled' | 'published';
   scheduledAt?: Date;
   platforms?: string[];
-  createdAt: Date;
+  createdAt?: Date;
+}
+
+export interface ScheduledArticle extends Article {
+  docId: string;
+  userId: string;
+  scheduledTime: number;
+}
+
+export interface GenerationJob {
+  docId?: string;
+  userId: string;
+  mode: GenerationMode; // 'topics' | 'image' | 'website' - for future batch expansion
+  topic?: string; // Optional - only for topic mode
+  count: number;
+  language: string;
+  systemPrompt: string;
+  imagePromptSuffix?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  createdAt: any;
+  progress?: number;
+  error?: string;
+}
+
+export interface UserSettings {
+  ai: {
+    systemPrompt: string;
+    contentLanguage: string;
+  };
+  vision: {
+    visionSystemPrompt: string;
+    imagePromptSuffix: string;
+    imageAspectRatio: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+  };
+  integration: {
+    webhookUrl: string; // Legacy field from ai-content-factory
+    // New multi-platform structure (ai-content-generator UI)
+    platforms?: {
+      facebook?: { enabled: boolean; webhookUrl: string };
+      linkedin?: { enabled: boolean; webhookUrl: string };
+      instagram?: { enabled: boolean; webhookUrl: string };
+    };
+  };
 }
 
 export interface PromptSettings {
@@ -36,10 +80,10 @@ export interface GeneratorSettings {
 
 // User type for authentication
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
+  uid: string;
+  email: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
 }
 
 // Firebase error types

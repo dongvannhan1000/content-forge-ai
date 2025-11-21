@@ -30,10 +30,10 @@ function isAuthConfigured(): boolean {
  */
 function mapFirebaseUserToUser(firebaseUser: FirebaseUser): User {
     return {
-        id: firebaseUser.uid,
-        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-        email: firebaseUser.email || '',
-        avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
     };
 }
 

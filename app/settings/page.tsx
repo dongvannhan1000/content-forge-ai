@@ -2,13 +2,100 @@
 
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import { useGeneratorSettings } from '@/hooks/useGeneratorSettings';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { UserSettings } from '@/types';
+import { AiSettingsSection } from '@/components/settings/ai-settings-section';
+import { VisionSettingsSection } from '@/components/settings/vision-settings-section';
+import { PlatformIntegrationToggle } from '@/components/settings/platform-integration-toggle';
 
 export default function SettingsPage() {
-  const { settings, updatePromptSettings, updateOutputSettings, updateImageSettings, resetToDefaults } = useGeneratorSettings();
+  const { settings, isLoading, error, saveSettings, resetSettings } = useSettings();
+  const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Sync local settings with loaded settings
+  useEffect(() => {
+    setLocalSettings(settings);
+    setHasChanges(false);
+  }, [settings]);
+
+  // Track changes
+  const updateLocalSettings = (newSettings: UserSettings) => {
+    setLocalSettings(newSettings);
+    setHasChanges(true);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await saveSettings(localSettings);
+      setHasChanges(false);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setIsSaving(true);
+    try {
+      await resetSettings();
+      setShowResetConfirm(false);
+      setHasChanges(false);
+    } catch (err) {
+      console.error('Failed to reset settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePlatformToggle = (platform: 'facebook' | 'linkedin' | 'instagram', enabled: boolean) => {
+    updateLocalSettings({
+      ...localSettings,
+      integration: {
+        ...localSettings.integration,
+        platforms: {
+          ...localSettings.integration?.platforms,
+          [platform]: {
+            enabled,
+            webhookUrl: localSettings.integration?.platforms?.[platform]?.webhookUrl || '',
+          },
+        },
+      },
+    });
+  };
+
+  const handlePlatformWebhookChange = (platform: 'facebook' | 'linkedin' | 'instagram', url: string) => {
+    updateLocalSettings({
+      ...localSettings,
+      integration: {
+        ...localSettings.integration,
+        platforms: {
+          ...localSettings.integration?.platforms,
+          [platform]: {
+            enabled: localSettings.integration?.platforms?.[platform]?.enabled || false,
+            webhookUrl: url,
+          },
+        },
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -17,177 +104,141 @@ export default function SettingsPage() {
         <Header />
         <main className="flex-1 overflow-y-auto">
           <div className="p-6 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
-
-            {/* Prompt Templates */}
-            <div className="bg-card border border-border rounded-xl p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground">Prompt Templates</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+              <div className="flex gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowResetConfirm(true)}
+                  disabled={isSaving}
                 >
                   Reset to Default
                 </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!hasChanges || isSaving}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
+            </div>
 
+            {error && (
+              <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-lg">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            {/* AI Settings */}
+            <AiSettingsSection settings={localSettings} onUpdate={updateLocalSettings} />
+
+            {/* Vision Settings */}
+            <VisionSettingsSection settings={localSettings} onUpdate={updateLocalSettings} />
+
+            {/* Integration Settings */}
+            <div className="bg-card border border-border rounded-xl p-6 mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                <span>🔗</span> Integration Settings
+              </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Blog Prompt</label>
-                  <textarea
-                    value={settings.promptSettings.defaultBlogPrompt}
-                    onChange={(e) => updatePromptSettings({ defaultBlogPrompt: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Legacy Webhook URL
+                  </label>
+                  <input
+                    type="url"
+                    value={localSettings.integration?.webhookUrl || ''}
+                    onChange={(e) =>
+                      updateLocalSettings({
+                        ...localSettings,
+                        integration: { ...localSettings.integration, webhookUrl: e.target.value },
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="https://your-webhook-url.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Social Post Prompt</label>
-                  <textarea
-                    value={settings.promptSettings.defaultSocialPostPrompt}
-                    onChange={(e) => updatePromptSettings({ defaultSocialPostPrompt: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  />
-                </div>
-              </div>
-            </div>
+                  <h3 className="text-sm font-medium text-foreground mb-3">Platform Integrations</h3>
+                  <div className="space-y-3">
+                    <PlatformIntegrationToggle
+                      platform="facebook"
+                      platformName="Facebook"
+                      description="Auto-publish to Facebook"
+                      enabled={localSettings.integration?.platforms?.facebook?.enabled || false}
+                      webhookUrl={localSettings.integration?.platforms?.facebook?.webhookUrl || ''}
+                      onToggle={(enabled) => handlePlatformToggle('facebook', enabled)}
+                      onWebhookChange={(url) => handlePlatformWebhookChange('facebook', url)}
+                    />
 
-            {/* Output Settings */}
-            <div className="bg-card border border-border rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Output Settings</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Language</label>
-                  <select
-                    value={settings.outputSettings.defaultLanguage}
-                    onChange={(e) => updateOutputSettings({ defaultLanguage: e.target.value })}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option>English</option>
-                    <option>Vietnamese</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                  </select>
-                </div>
+                    <PlatformIntegrationToggle
+                      platform="linkedin"
+                      platformName="LinkedIn"
+                      description="Auto-publish to LinkedIn"
+                      enabled={localSettings.integration?.platforms?.linkedin?.enabled || false}
+                      webhookUrl={localSettings.integration?.platforms?.linkedin?.webhookUrl || ''}
+                      onToggle={(enabled) => handlePlatformToggle('linkedin', enabled)}
+                      onWebhookChange={(url) => handlePlatformWebhookChange('linkedin', url)}
+                    />
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Tone</label>
-                  <select
-                    value={settings.outputSettings.defaultTone}
-                    onChange={(e) => updateOutputSettings({ defaultTone: e.target.value })}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option>Informative</option>
-                    <option>Casual</option>
-                    <option>Professional</option>
-                    <option>Playful</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Word Count Range</label>
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <input
-                        type="number"
-                        value={settings.outputSettings.defaultWordCount.min}
-                        onChange={(e) => updateOutputSettings({
-                          defaultWordCount: { ...settings.outputSettings.defaultWordCount, min: parseInt(e.target.value) }
-                        })}
-                        className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Min</p>
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="number"
-                        value={settings.outputSettings.defaultWordCount.max}
-                        onChange={(e) => updateOutputSettings({
-                          defaultWordCount: { ...settings.outputSettings.defaultWordCount, max: parseInt(e.target.value) }
-                        })}
-                        className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Max</p>
-                    </div>
+                    <PlatformIntegrationToggle
+                      platform="instagram"
+                      platformName="Instagram"
+                      description="Auto-publish to Instagram"
+                      enabled={localSettings.integration?.platforms?.instagram?.enabled || false}
+                      webhookUrl={localSettings.integration?.platforms?.instagram?.webhookUrl || ''}
+                      onToggle={(enabled) => handlePlatformToggle('instagram', enabled)}
+                      onWebhookChange={(url) => handlePlatformWebhookChange('instagram', url)}
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Image Generation Settings */}
-            <div className="bg-card border border-border rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Image Generation Settings</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Image Style</label>
-                  <select
-                    value={settings.imageSettings.defaultStyle}
-                    onChange={(e) => updateImageSettings({ defaultStyle: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="realistic">Realistic</option>
-                    <option value="illustration">Illustration</option>
-                    <option value="minimalistic">Minimalistic</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Default Image Size</label>
-                  <select
-                    value={settings.imageSettings.defaultSize}
-                    onChange={(e) => updateImageSettings({ defaultSize: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Integrations */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Integrations</h2>
-              <div className="space-y-4">
-                {['Facebook', 'LinkedIn', 'Blog CMS'].map(integration => (
-                  <div key={integration} className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-                    <div>
-                      <p className="font-medium text-foreground">Connect to {integration}</p>
-                      <p className="text-sm text-muted-foreground">Integrate {integration} to schedule posts directly</p>
-                    </div>
-                    <Button disabled className="opacity-50">Connect</Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {showResetConfirm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-card rounded-xl p-6 shadow-2xl max-w-sm">
-                  <h3 className="font-bold text-lg text-foreground mb-4">Reset to Defaults?</h3>
-                  <p className="text-sm text-muted-foreground mb-6">This will restore all settings to their default values.</p>
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setShowResetConfirm(false)} className="flex-1">Cancel</Button>
-                    <Button
-                      onClick={() => {
-                        resetToDefaults();
-                        setShowResetConfirm(false);
-                      }}
-                      className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                </div>
+            {/* Sticky Save Button for Mobile */}
+            {hasChanges && (
+              <div className="fixed bottom-6 right-6 md:hidden">
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!hasChanges || isSaving}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {/* Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Reset to Default?</h3>
+            <p className="text-muted-foreground mb-6">
+              This will reset all settings to their default values. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowResetConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleReset}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
