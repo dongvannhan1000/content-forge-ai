@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { ModeSwitcher } from '@/components/generator/mode-switcher';
 import { FormTopics } from '@/components/generator/form-topics';
@@ -11,73 +11,48 @@ import { EditArticleModal } from '@/components/modals/edit-article-modal';
 import { ScheduleArticleModal } from '@/components/modals/schedule-article-modal';
 import { ProgressBar } from '@/components/generator/progress-bar';
 import { LoadingOverlay } from '@/components/generator/loading-overlay';
-import { Button } from '@/components/ui/button';
 import { useArticles } from '@/hooks/useArticles';
-import { useGenerationProgress } from '@/hooks/useGenerationProgress';
-import { MOCK_ARTICLES } from '@/lib/mock-data';
-import { GenerationMode, Article } from '@/types';
+import { useGenerationJob } from '@/hooks/useGenerationJob';
+import { GenerationMode, GeneratedArticle } from '@/types';
 
 export default function GeneratorPage() {
   const [mode, setMode] = useState<GenerationMode>('topics');
-  const { articles, addArticle, updateArticle, deleteArticle, setArticles } = useArticles();
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [schedulingArticle, setSchedulingArticle] = useState<Article | null>(null);
-  const { progress, isGenerating, startGeneration, updateProgress, completeGeneration } = useGenerationProgress();
-
-  useEffect(() => {
-    if (articles.length === 0) {
-      setArticles(MOCK_ARTICLES);
-    }
-  }, []);
+  const { articles, updateArticle, deleteArticle } = useArticles();
+  const [editingArticle, setEditingArticle] = useState<GeneratedArticle | null>(null);
+  const [schedulingArticle, setSchedulingArticle] = useState<GeneratedArticle | null>(null);
+  const { isGenerating, progress, createJob } = useGenerationJob();
 
   const handleGenerate = async (data: any) => {
-    const articleCount = 3;
-    startGeneration(articleCount);
+    // Extract parameters based on mode
+    const jobData: any = {
+      mode,
+      count: 1, // Default count
+    };
 
-    for (let i = 0; i < articleCount; i++) {
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      const mockContent = `Generated content based on ${JSON.stringify(data).slice(0, 50)}... Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`;
-
-      addArticle({
-        title: `${mode.charAt(0).toUpperCase() + mode.slice(1)} - ${new Date().toLocaleTimeString()}`,
-        content: mockContent,
-        imageUrl: `/placeholder.svg?height=200&width=400&query=generated ${mode} content`,
-        mode,
-        status: 'draft',
-      });
-
-      updateProgress(i + 1);
+    if (mode === 'topics') {
+      jobData.topic = data.topic;
+      jobData.count = data.count || 1;
+    } else if (mode === 'image') {
+      // For image mode, we'll generate multiple articles from one image
+      jobData.topic = 'Image analysis content';
+      jobData.count = data.images?.length || 1;
+    } else if (mode === 'website') {
+      jobData.topic = `Content from ${data.url}`;
+      jobData.count = 1;
     }
 
-    completeGeneration();
+    await createJob(jobData);
   };
 
-  const handleDemoBulkGeneration = async () => {
-    const articleCount = 10;
-    startGeneration(articleCount);
+  const handleSchedule = (
+    article: GeneratedArticle,
+    platforms: string[],
+    date: Date,
+    time: string,
+    timezone: string
+  ) => {
+    if (!article.id) return;
 
-    for (let i = 0; i < articleCount; i++) {
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      const modes: GenerationMode[] = ['topics', 'image', 'website'];
-      const selectedMode = modes[i % modes.length];
-
-      addArticle({
-        title: `Demo Article ${i + 1} - ${selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)}`,
-        content: `This is a demo article generated for bulk testing. Content preview showing sample text that demonstrates the loading effect. Article ${i + 1} of 10.`,
-        imageUrl: `/placeholder.svg?height=200&width=400&query=demo content ${i + 1}`,
-        mode: selectedMode,
-        status: 'draft',
-      });
-
-      updateProgress(i + 1);
-    }
-
-    completeGeneration();
-  };
-
-  const handleSchedule = (article: Article, platforms: string[], date: Date, time: string, timezone: string) => {
     updateArticle(article.id, {
       status: 'scheduled',
       scheduledAt: date,
@@ -88,8 +63,8 @@ export default function GeneratorPage() {
 
   return (
     <MainLayout>
-      <ProgressBar total={progress.total} completed={progress.completed} isVisible={isGenerating} />
-      <LoadingOverlay isVisible={isGenerating} completed={progress.completed} total={progress.total} />
+      <ProgressBar total={progress.total} completed={progress.current} isVisible={isGenerating} />
+      <LoadingOverlay isVisible={isGenerating} completed={progress.current} total={progress.total} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-6 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -103,19 +78,6 @@ export default function GeneratorPage() {
                   {mode === 'image' && <FormImage onGenerate={handleGenerate} />}
                   {mode === 'website' && <FormWebsite onGenerate={handleGenerate} />}
                 </div>
-
-                <div className="mt-6 pt-6 border-t border-border">
-                  <Button
-                    onClick={handleDemoBulkGeneration}
-                    disabled={isGenerating}
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  >
-                    {isGenerating ? 'Generating...' : 'Generate 10 Demo Articles'}
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Click to see the loading effect and progress bar in action
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -123,7 +85,7 @@ export default function GeneratorPage() {
             <div className="lg:col-span-2">
               <div className="bg-card border border-border rounded-xl p-6">
                 <h2 className="text-lg font-bold text-foreground mb-4">
-                  Generated Articles ({articles.filter(a => a.status === 'draft').length})
+                  Generated Articles ({articles.length})
                 </h2>
                 {articles.length === 0 ? (
                   <div className="text-center py-12">
@@ -138,7 +100,7 @@ export default function GeneratorPage() {
                         article={article}
                         onEdit={() => setEditingArticle(article)}
                         onSchedule={() => setSchedulingArticle(article)}
-                        onDelete={() => deleteArticle(article.id)}
+                        onDelete={() => article.id && deleteArticle(article.id)}
                       />
                     ))}
                   </div>
@@ -153,7 +115,7 @@ export default function GeneratorPage() {
         <EditArticleModal
           article={editingArticle}
           onSave={(updated) => {
-            updateArticle(editingArticle.id, updated);
+            updateArticle(editingArticle.id!, updated);
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}

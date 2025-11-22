@@ -14,7 +14,7 @@ import {
     DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Article } from '@/types';
+import { GeneratedArticle } from '@/types';
 import { isFirestoreConfigured, COLLECTIONS, timestampToDate } from './firestore-utils';
 
 /**
@@ -25,39 +25,37 @@ import { isFirestoreConfigured, COLLECTIONS, timestampToDate } from './firestore
  */
 
 /**
- * Convert Article from Firestore format to app format
+ * Convert GeneratedArticle from Firestore format to app format
  */
-function mapFirestoreArticle(id: string, data: DocumentData): Article {
+function mapFirestoreArticle(id: string, data: DocumentData): GeneratedArticle {
     return {
         id,
+        userId: data.userId,
         title: data.title,
         content: data.content,
         imageUrl: data.imageUrl,
         imagePrompt: data.imagePrompt,
         topic: data.topic,
-        mode: data.mode,
-        status: data.status,
-        scheduledAt: data.scheduledAt ? timestampToDate(data.scheduledAt) : undefined,
+        mode: data.mode || 'topics', // Default for old records
+        status: data.status || 'published', // Old records default to published
+        scheduledAt: data.scheduledAt,
         platforms: data.platforms,
-        createdAt: data.createdAt ? timestampToDate(data.createdAt) : undefined,
+        createdAt: data.createdAt || Timestamp.now(),
+        updatedAt: data.updatedAt,
+        jobId: data.jobId,
     };
 }
 
 /**
- * Convert Article to Firestore format
+ * Convert GeneratedArticle to Firestore format
  */
-function articleToFirestore(article: Partial<Article>): DocumentData {
+function articleToFirestore(article: Partial<GeneratedArticle>): DocumentData {
     const data: DocumentData = {
         ...article,
     };
 
-    // Convert dates to Firestore Timestamps
-    if (article.scheduledAt) {
-        data.scheduledAt = Timestamp.fromDate(article.scheduledAt);
-    }
-    if (article.createdAt) {
-        data.createdAt = Timestamp.fromDate(article.createdAt);
-    }
+    // Timestamps are already in Firestore format from GeneratedArticle
+    // No conversion needed
 
     return data;
 }
@@ -67,7 +65,7 @@ function articleToFirestore(article: Partial<Article>): DocumentData {
  */
 export async function createArticle(
     userId: string,
-    article: Omit<Article, 'id'>
+    article: Omit<GeneratedArticle, 'id'>
 ): Promise<string> {
     if (!isFirestoreConfigured()) {
         throw new Error('Firestore is not configured. Please set up your .env.local file.');
@@ -76,7 +74,7 @@ export async function createArticle(
     try {
         const articleData = articleToFirestore({
             ...article,
-            createdAt: article.createdAt || new Date(),
+            createdAt: article.createdAt || Timestamp.now(),
         });
 
         const docRef = await addDoc(collection(db, COLLECTIONS.GENERATED_ARTICLES), {
@@ -94,7 +92,7 @@ export async function createArticle(
 /**
  * Get a single article by ID
  */
-export async function getArticle(articleId: string): Promise<Article | null> {
+export async function getArticle(articleId: string): Promise<GeneratedArticle | null> {
     if (!isFirestoreConfigured()) return null;
 
     try {
@@ -115,7 +113,7 @@ export async function getArticle(articleId: string): Promise<Article | null> {
 /**
  * Get all articles for a user
  */
-export async function getUserArticles(userId: string): Promise<Article[]> {
+export async function getUserArticles(userId: string): Promise<GeneratedArticle[]> {
     if (!isFirestoreConfigured()) return [];
 
     try {
@@ -140,7 +138,7 @@ export async function getUserArticles(userId: string): Promise<Article[]> {
  */
 export async function updateArticle(
     articleId: string,
-    updates: Partial<Article>
+    updates: Partial<GeneratedArticle>
 ): Promise<void> {
     if (!isFirestoreConfigured()) {
         throw new Error('Firestore is not configured');
@@ -181,12 +179,39 @@ export async function deleteArticle(articleId: string): Promise<void> {
 }
 
 /**
+ * Get user articles filtered by status
+ */
+export async function getUserArticlesByStatus(
+    userId: string,
+    status: 'draft' | 'scheduled' | 'published'
+): Promise<GeneratedArticle[]> {
+    if (!isFirestoreConfigured()) return [];
+
+    try {
+        const q = query(
+            collection(db, COLLECTIONS.GENERATED_ARTICLES),
+            where('userId', '==', userId),
+            where('status', '==', status),
+            orderBy('createdAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc =>
+            mapFirestoreArticle(doc.id, doc.data())
+        );
+    } catch (error: any) {
+        console.error('Error getting user articles by status:', error);
+        throw new Error(error.message || 'Failed to get articles');
+    }
+}
+
+/**
  * Subscribe to real-time updates for user's articles
  * Returns an unsubscribe function
  */
 export function subscribeToUserArticles(
     userId: string,
-    callback: (articles: Article[]) => void
+    callback: (articles: GeneratedArticle[]) => void
 ): () => void {
     if (!isFirestoreConfigured()) {
         console.warn('Firestore is not configured. Please set up your .env.local file.');
@@ -197,6 +222,36 @@ export function subscribeToUserArticles(
     const q = query(
         collection(db, COLLECTIONS.GENERATED_ARTICLES),
         where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(q, (querySnapshot) => {
+        const articles = querySnapshot.docs.map(doc =>
+            mapFirestoreArticle(doc.id, doc.data())
+        );
+        callback(articles);
+    });
+}
+
+/**
+ * Subscribe to real-time updates for user's articles filtered by status
+ * Returns an unsubscribe function
+ */
+export function subscribeToUserArticlesByStatus(
+    userId: string,
+    status: 'draft' | 'scheduled' | 'published',
+    callback: (articles: GeneratedArticle[]) => void
+): () => void {
+    if (!isFirestoreConfigured()) {
+        console.warn('Firestore is not configured. Please set up your .env.local file.');
+        callback([]);
+        return () => { }; // No-op unsubscribe
+    }
+
+    const q = query(
+        collection(db, COLLECTIONS.GENERATED_ARTICLES),
+        where('userId', '==', userId),
+        where('status', '==', status),
         orderBy('createdAt', 'desc')
     );
 

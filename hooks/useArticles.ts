@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Article } from '@/types';
+import { GeneratedArticle } from '@/types';
 import { useAuth } from '@/contexts/auth-context';
 import * as articlesService from '@/services/articles.service';
 
@@ -8,15 +8,16 @@ import * as articlesService from '@/services/articles.service';
  * 
  * Purpose: Provides a clean interface for components to manage articles.
  * Handles CRUD operations and real-time subscriptions to Firestore.
+ * Automatically filters to show DRAFT articles only.
  */
 
 export function useArticles() {
   const { user } = useAuth();
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<GeneratedArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Subscribe to real-time article updates
+  // Subscribe to real-time DRAFT article updates
   useEffect(() => {
     if (!user || !user.uid) {
       setArticles([]);
@@ -25,8 +26,9 @@ export function useArticles() {
     }
 
     setIsLoading(true);
-    const unsubscribe = articlesService.subscribeToUserArticles(
+    const unsubscribe = articlesService.subscribeToUserArticlesByStatus(
       user.uid,
+      'draft', // Only show draft articles
       (updatedArticles) => {
         setArticles(updatedArticles);
         setIsLoading(false);
@@ -41,7 +43,7 @@ export function useArticles() {
   /**
    * Create a new article
    */
-  const addArticle = async (article: Omit<Article, 'id'>): Promise<string> => {
+  const addArticle = async (article: Omit<GeneratedArticle, 'id'>): Promise<string> => {
     if (!user || !user.uid) {
       throw new Error('User must be authenticated to create articles');
     }
@@ -61,7 +63,7 @@ export function useArticles() {
    */
   const updateArticle = async (
     articleId: string,
-    updates: Partial<Article>
+    updates: Partial<GeneratedArticle>
   ): Promise<void> => {
     try {
       setError(null);
@@ -88,7 +90,7 @@ export function useArticles() {
   /**
    * Get a single article by ID
    */
-  const getArticle = async (articleId: string): Promise<Article | null> => {
+  const getArticle = async (articleId: string): Promise<GeneratedArticle | null> => {
     try {
       setError(null);
       return await articlesService.getArticle(articleId);

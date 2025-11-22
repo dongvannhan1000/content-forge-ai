@@ -1,25 +1,8 @@
 export type GenerationMode = 'topics' | 'image' | 'website';
 
 /**
- * Article interface - Used for UI and display
- */
-export interface Article {
-  id: string;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  imagePrompt?: string;
-  topic?: string;
-  mode?: GenerationMode;
-  status?: 'draft' | 'scheduled' | 'published';
-  scheduledAt?: Date;
-  platforms?: string[];
-  createdAt?: Date;
-}
-
-/**
  * GeneratedArticle - Stored in 'generated_articles' collection
- * This is the actual Firestore document structure
+ * This is the main article type used throughout the application
  */
 export interface GeneratedArticle {
   id?: string; // Document ID
@@ -30,7 +13,7 @@ export interface GeneratedArticle {
   imagePrompt?: string;
   topic?: string;
   mode: GenerationMode;
-  status: 'draft' | 'scheduled' | 'published';
+  status: 'draft' | 'scheduled' | 'published'; // Required field
   scheduledAt?: any; // Firestore Timestamp
   platforms?: string[];
   createdAt: any; // Firestore Timestamp
@@ -38,9 +21,14 @@ export interface GeneratedArticle {
   jobId?: string; // Optional reference to generation job
 }
 
-export interface ScheduledArticle extends Article {
+/**
+ * Type alias for backward compatibility
+ * Use GeneratedArticle directly in new code
+ */
+export type Article = GeneratedArticle;
+
+export interface ScheduledArticle extends GeneratedArticle {
   docId: string;
-  userId: string;
   scheduledTime: number;
 }
 
@@ -85,28 +73,6 @@ export interface UserSettings {
       instagram?: { enabled: boolean; webhookUrl: string };
     };
   };
-}
-
-export interface PromptSettings {
-  defaultBlogPrompt: string;
-  defaultSocialPostPrompt: string;
-}
-
-export interface OutputSettings {
-  defaultLanguage: string;
-  defaultTone: string;
-  defaultWordCount: { min: number; max: number };
-}
-
-export interface ImageSettings {
-  defaultStyle: 'realistic' | 'illustration' | 'minimalistic';
-  defaultSize: 'small' | 'medium' | 'large';
-}
-
-export interface GeneratorSettings {
-  promptSettings: PromptSettings;
-  outputSettings: OutputSettings;
-  imageSettings: ImageSettings;
 }
 
 /**

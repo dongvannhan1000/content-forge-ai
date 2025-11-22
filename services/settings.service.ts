@@ -10,7 +10,7 @@ import {
     Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { UserSettings, GeneratorSettings } from '@/types';
+import { UserSettings } from '@/types';
 import { isFirestoreConfigured, COLLECTIONS } from './firestore-utils';
 
 /**

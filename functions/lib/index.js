@@ -1,7 +1,7 @@
 "use strict";
 // File: functions/src/index.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processBatchGenerationJob = exports.checkScheduledPosts = exports.regenerateImagePrompt = exports.generateImage = exports.regenerateArticleText = exports.generateArticleFromWebsite = exports.generateArticlesFromImages = exports.generateArticlesFromTopic = void 0;
+exports.processBatchGenerationJobV2 = exports.processBatchGenerationJob = exports.checkScheduledPosts = exports.regenerateImagePrompt = exports.generateImage = exports.regenerateArticleText = exports.generateArticleFromWebsite = exports.generateArticlesFromImages = exports.generateArticlesFromTopic = void 0;
 // Sử dụng các import của Firebase Functions v2 hiện đại.
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -451,6 +451,112 @@ exports.processBatchGenerationJob = (0, firestore_1.onDocumentCreated)({
     }
     catch (error) {
         logger.error(`[Job ${jobId}] Job failed:`, error);
+        await jobRef.update({
+            status: "failed",
+            error: error.message || "An unknown error occurred.",
+        });
+    }
+});
+/**
+ * V2 Cloud Function - Saves articles with mode and status fields
+ * Triggered when a document is created in 'generation_jobs_v2' collection
+ */
+exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
+    document: "generation_jobs_v2/{jobId}",
+    timeoutSeconds: 540,
+    memory: "1GiB",
+    region: "us-central1",
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+        logger.log("No data associated with the event");
+        return;
+    }
+    const jobData = snapshot.data();
+    const jobId = event.params.jobId;
+    const jobRef = db.collection("generation_jobs_v2").doc(jobId);
+    try {
+        logger.info(`[JobV2 ${jobId}] Starting job for user ${jobData.userId}`);
+        await jobRef.update({ status: "processing" });
+        const ai = new genai_1.GoogleGenAI({ apiKey: geminiApiKey.value() });
+        const articleSchema = {
+            type: genai_1.Type.OBJECT,
+            properties: {
+                title: { type: genai_1.Type.STRING, description: "A catchy and engaging title for the social media post." },
+                content: { type: genai_1.Type.STRING, description: "The main body of the post, formatted for readability." },
+                imagePrompt: { type: genai_1.Type.STRING, description: "A detailed, creative prompt for an AI image generator." },
+            },
+            required: ["title", "content", "imagePrompt"],
+        };
+        for (let i = 1; i <= jobData.count; i++) {
+            // Check if job was cancelled
+            const currentJobSnapshot = await jobRef.get();
+            const currentJobData = currentJobSnapshot.data();
+            if (!currentJobSnapshot.exists || currentJobData?.status === "cancelled") {
+                logger.info(`JobV2 ${jobId} was cancelled. Halting execution.`);
+                if (currentJobData?.status !== "cancelled") {
+                    await jobRef.update({ status: "cancelled", error: "Job cancelled by user." });
+                }
+                return;
+            }
+            logger.info(`[JobV2 ${jobId}] Generating article ${i}/${jobData.count}`);
+            // 1. Generate article text
+            logger.info(`[JobV2 ${jobId}] Calling Gemini Pro for text generation...`);
+            const topicText = jobData.topic || "general content";
+            const textResponse = await ai.models.generateContent({
+                model: "gemini-2.5-pro",
+                contents: `Generate one social media post about the following topic: "${topicText}". The post must be written in ${jobData.language}.`,
+                config: {
+                    systemInstruction: jobData.systemPrompt,
+                    responseMimeType: "application/json",
+                    responseSchema: articleSchema,
+                },
+            });
+            const articleText = JSON.parse(textResponse.text.trim());
+            logger.info(`[JobV2 ${jobId}] Text generation successful.`);
+            // Apply imagePromptSuffix if provided
+            if (jobData.imagePromptSuffix && articleText.imagePrompt) {
+                articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
+            }
+            // 2. Generate image
+            logger.info(`[JobV2 ${jobId}] Calling Imagen for image generation...`);
+            const imageResponse = await ai.models.generateImages({
+                model: "imagen-4.0-generate-001",
+                prompt: articleText.imagePrompt,
+                config: {
+                    numberOfImages: 1,
+                    outputMimeType: "image/jpeg",
+                    aspectRatio: "1:1",
+                },
+            });
+            const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
+            if (!base64ImageBytes) {
+                throw new Error("No image generated");
+            }
+            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            logger.info(`[JobV2 ${jobId}] Image generation successful.`);
+            // 3. Save to 'generated_articles' with mode and status
+            logger.info(`[JobV2 ${jobId}] Saving article with mode and status to generated_articles.`);
+            await db.collection("generated_articles").add({
+                userId: jobData.userId,
+                jobId: jobId,
+                title: articleText.title,
+                content: articleText.content,
+                imagePrompt: articleText.imagePrompt,
+                topic: jobData.topic || null,
+                imageUrl: imageUrl,
+                mode: jobData.mode, // V2: Include mode
+                status: 'draft', // V2: All articles start as draft
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            // 4. Update progress
+            await jobRef.update({ progress: i });
+        }
+        logger.info(`[JobV2 ${jobId}] Job completed successfully.`);
+        await jobRef.update({ status: "completed" });
+    }
+    catch (error) {
+        logger.error(`[JobV2 ${jobId}] Job failed:`, error);
         await jobRef.update({
             status: "failed",
             error: error.message || "An unknown error occurred.",

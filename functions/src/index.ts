@@ -30,38 +30,38 @@ const geminiApiKey = defineString("GEMINI_API_KEY");
 // ============================================================================
 
 interface ScheduledArticle {
-    userId: string;
-    title: string;
-    content: string;
-    imageUrl: string;
-    scheduledTime: admin.firestore.Timestamp;
+  userId: string;
+  title: string;
+  content: string;
+  imageUrl: string;
+  scheduledTime: admin.firestore.Timestamp;
 }
 
 export interface UserSettings {
   settings: {
     ai: {
-    systemPrompt: string;
-    contentLanguage: string;
-  };
-  vision: {
-    visionSystemPrompt: string;
-    imagePromptSuffix: string;
-    imageAspectRatio: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
-  };
-  integration: {
-    webhookUrl: string;
+      systemPrompt: string;
+      contentLanguage: string;
+    };
+    vision: {
+      visionSystemPrompt: string;
+      imagePromptSuffix: string;
+      imageAspectRatio: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+    };
+    integration: {
+      webhookUrl: string;
     };
   }
 }
 
 interface GenerationJob {
-    userId: string;
-    topic: string;
-    count: number;
-    language: string;
-    systemPrompt: string;
-    imagePromptSuffix?: string;
-    status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  userId: string;
+  topic: string;
+  count: number;
+  language: string;
+  systemPrompt: string;
+  imagePromptSuffix?: string;
+  status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 }
 
 
@@ -76,15 +76,15 @@ export const generateArticlesFromTopic = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { topic, count, language, systemPrompt, imagePromptSuffix } = request.data;
-  
+
   if (!topic || !count || !language) {
     throw new HttpsError('invalid-argument', 'Missing required parameters');
   }
 
   const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-  
+
   const articleSchema = {
     type: Type.OBJECT,
     properties: {
@@ -113,7 +113,7 @@ export const generateArticlesFromTopic = onCall(async (request) => {
     const articles = JSON.parse(jsonText!);
 
     if (Array.isArray(articles) || typeof articles !== 'object' || articles === null) {
-       throw new HttpsError('internal', 'AI returned unexpected data structure');
+      throw new HttpsError('internal', 'AI returned unexpected data structure');
     }
     if (imagePromptSuffix && articles.imagePrompt) {
       articles.imagePrompt = `${articles.imagePrompt.trim()}, ${imagePromptSuffix}`;
@@ -132,15 +132,15 @@ export const generateArticlesFromImages = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { imageUrls, systemPrompt, language } = request.data;
-  
+
   if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw new HttpsError('invalid-argument', 'Missing or invalid image URLs');
   }
 
   const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-  
+
   const articleSchema = {
     type: Type.OBJECT,
     properties: {
@@ -153,18 +153,18 @@ export const generateArticlesFromImages = onCall(async (request) => {
 
   try {
     const articles = [];
-    
+
     for (const imageUrl of imageUrls) {
       // Fetch image from URL
       const imageResponse = await fetch(imageUrl);
       if (!imageResponse.ok) {
         throw new Error(`Failed to fetch image from URL: ${imageUrl}`);
       }
-      
+
       const imageBuffer = await imageResponse.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
       const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
-      
+
       const imagePart = {
         inlineData: {
           data: imageBase64,
@@ -201,15 +201,15 @@ export const generateArticleFromWebsite = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { websiteUrl, systemPrompt } = request.data;
-  
+
   if (!websiteUrl) {
     throw new HttpsError('invalid-argument', 'Missing website URL');
   }
 
   const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-  
+
   const articleSchema = {
     type: Type.OBJECT,
     properties: {
@@ -246,9 +246,9 @@ export const regenerateArticleText = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { article, systemPrompt } = request.data;
-  
+
   if (!article) {
     throw new HttpsError('invalid-argument', 'Missing article data');
   }
@@ -277,7 +277,7 @@ export const regenerateArticleText = onCall(async (request) => {
         },
       },
     });
-    
+
     const jsonText = response.text?.trim();
     return { text: JSON.parse(jsonText!) };
   } catch (error: any) {
@@ -293,9 +293,9 @@ export const generateImage = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { prompt } = request.data;
-  
+
   if (!prompt) {
     throw new HttpsError('invalid-argument', 'Missing image prompt');
   }
@@ -328,9 +328,9 @@ export const regenerateImagePrompt = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
-  
+
   const { article, systemPrompt, imagePromptSuffix } = request.data;
-  
+
   if (!article) {
     throw new HttpsError('invalid-argument', 'Missing article data');
   }
@@ -363,7 +363,7 @@ export const regenerateImagePrompt = onCall(async (request) => {
         },
       },
     });
-    
+
     const jsonText = response.text?.trim();
     const result = JSON.parse(jsonText!);
 
@@ -423,7 +423,7 @@ export const checkScheduledPosts = onSchedule(
           await doc.ref.delete();
           return;
         }
-        
+
         // Giả sử Node.js 18+ runtime có fetch toàn cục.
         const response = await fetch(webhookUrl, {
           method: "POST",
@@ -436,8 +436,8 @@ export const checkScheduledPosts = onSchedule(
         });
 
         if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(`Webhook call failed with status ${response.status}: ${errorBody}`);
+          const errorBody = await response.text();
+          throw new Error(`Webhook call failed with status ${response.status}: ${errorBody}`);
         }
 
         logger.info(`Successfully posted article ${docId}. Deleting from schedule.`);
@@ -463,114 +463,251 @@ export const checkScheduledPosts = onSchedule(
  * chi tiết công việc và cập nhật tiến trình trong Firestore.
  */
 export const processBatchGenerationJob = onDocumentCreated({
-    document: "generation_jobs/{jobId}",
-    // Tăng thời gian chờ và bộ nhớ để xử lý các tác vụ lớn
-    timeoutSeconds: 540,
-    memory: "1GiB",
-    region: "us-central1", // Chỉ định region để ổn định
+  document: "generation_jobs/{jobId}",
+  // Tăng thời gian chờ và bộ nhớ để xử lý các tác vụ lớn
+  timeoutSeconds: 540,
+  memory: "1GiB",
+  region: "us-central1", // Chỉ định region để ổn định
 }, async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) {
-      logger.log("No data associated with the event");
-      return;
-    }
-    const jobData = snapshot.data() as GenerationJob;
-    const jobId = event.params.jobId;
-    const jobRef = db.collection("generation_jobs").doc(jobId);
-  
-    try {
-      logger.info(`[Job ${jobId}] Starting job for user ${jobData.userId}`);
-      await jobRef.update({ status: "processing" });
-  
-      // Khởi tạo Gemini client bằng API key đã được lấy một cách an toàn.
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-  
-      const articleSchema = {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING, description: "A catchy and engaging title for the social media post." },
-          content: { type: Type.STRING, description: "The main body of the post, formatted for readability." },
-          imagePrompt: { type: Type.STRING, description: "A detailed, creative prompt for an AI image generator." },
-        },
-        required: ["title", "content", "imagePrompt"],
-      };
-  
-      for (let i = 1; i <= jobData.count; i++) {
-        // Kiểm tra xem công việc có bị hủy không trước khi xử lý mỗi bài viết.
-        const currentJobSnapshot = await jobRef.get();
-        const currentJobData = currentJobSnapshot.data() as GenerationJob;
+  const snapshot = event.data;
+  if (!snapshot) {
+    logger.log("No data associated with the event");
+    return;
+  }
+  const jobData = snapshot.data() as GenerationJob;
+  const jobId = event.params.jobId;
+  const jobRef = db.collection("generation_jobs").doc(jobId);
 
-        if (!currentJobSnapshot.exists || currentJobData?.status === "cancelled") {
-            logger.info(`Job ${jobId} was cancelled. Halting execution.`);
-            if (currentJobData?.status !== "cancelled") {
-              await jobRef.update({ status: "cancelled", error: "Job cancelled by user." });
-            }
-            return;
+  try {
+    logger.info(`[Job ${jobId}] Starting job for user ${jobData.userId}`);
+    await jobRef.update({ status: "processing" });
+
+    // Khởi tạo Gemini client bằng API key đã được lấy một cách an toàn.
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
+    const articleSchema = {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: "A catchy and engaging title for the social media post." },
+        content: { type: Type.STRING, description: "The main body of the post, formatted for readability." },
+        imagePrompt: { type: Type.STRING, description: "A detailed, creative prompt for an AI image generator." },
+      },
+      required: ["title", "content", "imagePrompt"],
+    };
+
+    for (let i = 1; i <= jobData.count; i++) {
+      // Kiểm tra xem công việc có bị hủy không trước khi xử lý mỗi bài viết.
+      const currentJobSnapshot = await jobRef.get();
+      const currentJobData = currentJobSnapshot.data() as GenerationJob;
+
+      if (!currentJobSnapshot.exists || currentJobData?.status === "cancelled") {
+        logger.info(`Job ${jobId} was cancelled. Halting execution.`);
+        if (currentJobData?.status !== "cancelled") {
+          await jobRef.update({ status: "cancelled", error: "Job cancelled by user." });
         }
-
-        logger.info(`[Job ${jobId}] Generating article ${i}/${jobData.count}`);
-  
-        // 1. Tạo nội dung bài viết
-        logger.info(`[Job ${jobId}] Calling Gemini Pro for text generation...`);
-        const textResponse = await ai.models.generateContent({
-          model: "gemini-2.5-pro",
-          contents: `Generate one social media post about the following topic: "${jobData.topic}". The post must be written in ${jobData.language}.`,
-          config: {
-            systemInstruction: jobData.systemPrompt,
-            responseMimeType: "application/json",
-            responseSchema: articleSchema,
-          },
-        });
-        const articleText = JSON.parse(textResponse.text!.trim());
-        logger.info(`[Job ${jobId}] Text generation successful.`);
-
-        // Apply imagePromptSuffix if provided
-        if (jobData.imagePromptSuffix && articleText.imagePrompt) {
-          articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
-        }
-
-        // 2. Tạo hình ảnh
-        logger.info(`[Job ${jobId}] Calling Imagen for image generation...`);
-        const imageResponse = await ai.models.generateImages({
-          model: "imagen-4.0-generate-001",
-          prompt: articleText.imagePrompt,
-          config: {
-            numberOfImages: 1,
-            outputMimeType: "image/jpeg",
-            aspectRatio: "1:1",
-          },
-        });
-        const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
-        if (!base64ImageBytes) {
-          throw new Error("No image generated");
-        }
-        const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-        logger.info(`[Job ${jobId}] Image generation successful.`);
-  
-        // 3. Save to 'generated_articles' collection for user preview
-        logger.info(`[Job ${jobId}] Saving generated article to Firestore generated_articles.`);
-        await db.collection("generated_articles").add({
-          userId: jobData.userId,
-          jobId: jobId,
-          title: articleText.title,
-          content: articleText.content,
-          imagePrompt: articleText.imagePrompt,
-          topic: jobData.topic,
-          imageUrl: imageUrl,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-  
-        // 4. Cập nhật tiến trình (progress)
-        await jobRef.update({ progress: i });
+        return;
       }
-  
-      logger.info(`[Job ${jobId}] Job completed successfully.`);
-      await jobRef.update({ status: "completed" });
-    } catch (error: any) {
-      logger.error(`[Job ${jobId}] Job failed:`, error);
-      await jobRef.update({ 
-          status: "failed",
-          error: error.message || "An unknown error occurred.",
+
+      logger.info(`[Job ${jobId}] Generating article ${i}/${jobData.count}`);
+
+      // 1. Tạo nội dung bài viết
+      logger.info(`[Job ${jobId}] Calling Gemini Pro for text generation...`);
+      const textResponse = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        contents: `Generate one social media post about the following topic: "${jobData.topic}". The post must be written in ${jobData.language}.`,
+        config: {
+          systemInstruction: jobData.systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: articleSchema,
+        },
       });
+      const articleText = JSON.parse(textResponse.text!.trim());
+      logger.info(`[Job ${jobId}] Text generation successful.`);
+
+      // Apply imagePromptSuffix if provided
+      if (jobData.imagePromptSuffix && articleText.imagePrompt) {
+        articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
+      }
+
+      // 2. Tạo hình ảnh
+      logger.info(`[Job ${jobId}] Calling Imagen for image generation...`);
+      const imageResponse = await ai.models.generateImages({
+        model: "imagen-4.0-generate-001",
+        prompt: articleText.imagePrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: "image/jpeg",
+          aspectRatio: "1:1",
+        },
+      });
+      const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
+      if (!base64ImageBytes) {
+        throw new Error("No image generated");
+      }
+      const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+      logger.info(`[Job ${jobId}] Image generation successful.`);
+
+      // 3. Save to 'generated_articles' collection for user preview
+      logger.info(`[Job ${jobId}] Saving generated article to Firestore generated_articles.`);
+      await db.collection("generated_articles").add({
+        userId: jobData.userId,
+        jobId: jobId,
+        title: articleText.title,
+        content: articleText.content,
+        imagePrompt: articleText.imagePrompt,
+        topic: jobData.topic,
+        imageUrl: imageUrl,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 4. Cập nhật tiến trình (progress)
+      await jobRef.update({ progress: i });
     }
-});
+
+    logger.info(`[Job ${jobId}] Job completed successfully.`);
+    await jobRef.update({ status: "completed" });
+  } catch (error: any) {
+    logger.error(`[Job ${jobId}] Job failed:`, error);
+    await jobRef.update({
+      status: "failed",
+      error: error.message || "An unknown error occurred.",
+    });
+  }
+});
+
+// ============================================================================
+// CLOUD FUNCTION 3: BATCH CONTENT GENERATOR V2 (with mode and status)
+// ============================================================================
+
+/**
+ * V2 Type Definition - includes mode field
+ */
+interface GenerationJobV2 {
+  userId: string;
+  mode: string; // 'topics' | 'image' | 'website'
+  topic?: string;
+  count: number;
+  language: string;
+  systemPrompt: string;
+  imagePromptSuffix?: string;
+  status?: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+}
+
+/**
+ * V2 Cloud Function - Saves articles with mode and status fields
+ * Triggered when a document is created in 'generation_jobs_v2' collection
+ */
+export const processBatchGenerationJobV2 = onDocumentCreated({
+  document: "generation_jobs_v2/{jobId}",
+  timeoutSeconds: 540,
+  memory: "1GiB",
+  region: "us-central1",
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) {
+    logger.log("No data associated with the event");
+    return;
+  }
+  const jobData = snapshot.data() as GenerationJobV2;
+  const jobId = event.params.jobId;
+  const jobRef = db.collection("generation_jobs_v2").doc(jobId);
+
+  try {
+    logger.info(`[JobV2 ${jobId}] Starting job for user ${jobData.userId}`);
+    await jobRef.update({ status: "processing" });
+
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+
+    const articleSchema = {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: "A catchy and engaging title for the social media post." },
+        content: { type: Type.STRING, description: "The main body of the post, formatted for readability." },
+        imagePrompt: { type: Type.STRING, description: "A detailed, creative prompt for an AI image generator." },
+      },
+      required: ["title", "content", "imagePrompt"],
+    };
+
+    for (let i = 1; i <= jobData.count; i++) {
+      // Check if job was cancelled
+      const currentJobSnapshot = await jobRef.get();
+      const currentJobData = currentJobSnapshot.data() as GenerationJobV2;
+
+      if (!currentJobSnapshot.exists || currentJobData?.status === "cancelled") {
+        logger.info(`JobV2 ${jobId} was cancelled. Halting execution.`);
+        if (currentJobData?.status !== "cancelled") {
+          await jobRef.update({ status: "cancelled", error: "Job cancelled by user." });
+        }
+        return;
+      }
+
+      logger.info(`[JobV2 ${jobId}] Generating article ${i}/${jobData.count}`);
+
+      // 1. Generate article text
+      logger.info(`[JobV2 ${jobId}] Calling Gemini Pro for text generation...`);
+      const topicText = jobData.topic || "general content";
+      const textResponse = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        contents: `Generate one social media post about the following topic: "${topicText}". The post must be written in ${jobData.language}.`,
+        config: {
+          systemInstruction: jobData.systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: articleSchema,
+        },
+      });
+      const articleText = JSON.parse(textResponse.text!.trim());
+      logger.info(`[JobV2 ${jobId}] Text generation successful.`);
+
+      // Apply imagePromptSuffix if provided
+      if (jobData.imagePromptSuffix && articleText.imagePrompt) {
+        articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
+      }
+
+      // 2. Generate image
+      logger.info(`[JobV2 ${jobId}] Calling Imagen for image generation...`);
+      const imageResponse = await ai.models.generateImages({
+        model: "imagen-4.0-generate-001",
+        prompt: articleText.imagePrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: "image/jpeg",
+          aspectRatio: "1:1",
+        },
+      });
+      const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
+      if (!base64ImageBytes) {
+        throw new Error("No image generated");
+      }
+      const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+      logger.info(`[JobV2 ${jobId}] Image generation successful.`);
+
+      // 3. Save to 'generated_articles' with mode and status
+      logger.info(`[JobV2 ${jobId}] Saving article with mode and status to generated_articles.`);
+      await db.collection("generated_articles").add({
+        userId: jobData.userId,
+        jobId: jobId,
+        title: articleText.title,
+        content: articleText.content,
+        imagePrompt: articleText.imagePrompt,
+        topic: jobData.topic || null,
+        imageUrl: imageUrl,
+        mode: jobData.mode, // V2: Include mode
+        status: 'draft', // V2: All articles start as draft
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 4. Update progress
+      await jobRef.update({ progress: i });
+    }
+
+    logger.info(`[JobV2 ${jobId}] Job completed successfully.`);
+    await jobRef.update({ status: "completed" });
+  } catch (error: any) {
+    logger.error(`[JobV2 ${jobId}] Job failed:`, error);
+    await jobRef.update({
+      status: "failed",
+      error: error.message || "An unknown error occurred.",
+    });
+  }
+});
+
