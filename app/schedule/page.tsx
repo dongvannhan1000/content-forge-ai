@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import { useArticles } from '@/hooks/useArticles';
+import { useScheduledArticles } from '@/hooks/useArticles';
 import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,16 +12,15 @@ import { EditArticleModal } from '@/components/modals/edit-article-modal';
 import { ScheduleArticleModal } from '@/components/modals/schedule-article-modal';
 
 export default function SchedulePage() {
-  const { articles, updateArticle, deleteArticle } = useArticles();
+  const { articles, updateArticle, deleteArticle } = useScheduledArticles();
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [schedulingArticle, setSchedulingArticle] = useState<Article | null>(null);
   const [platformFilter, setPlatformFilter] = useState<string>('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [searchQuery, setSearchQuery] = useState('');
 
-  const scheduledArticles = articles.filter(a => a.status === 'scheduled');
-  
-  const filteredArticles = scheduledArticles.filter(article => {
+  // No need to filter by status - articles are already scheduled
+  const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPlatform = !platformFilter || article.platforms?.includes(platformFilter);
     const matchesDate = true; // Simplified for demo
@@ -29,10 +28,12 @@ export default function SchedulePage() {
   });
 
   const handleUnschedule = (article: Article) => {
+    if (!article.id) return;
     updateArticle(article.id, { status: 'draft', scheduledAt: undefined, platforms: [] });
   };
 
   const handleSchedule = (article: Article, platforms: string[], date: Date, time: string, timezone: string) => {
+    if (!article.id) return;
     updateArticle(article.id, {
       status: 'scheduled',
       scheduledAt: date,
@@ -50,7 +51,7 @@ export default function SchedulePage() {
           <div className="p-6 max-w-7xl mx-auto">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-foreground mb-4">Scheduled Articles</h1>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <input
                   type="text"
@@ -151,7 +152,9 @@ export default function SchedulePage() {
         <EditArticleModal
           article={editingArticle}
           onSave={(updated) => {
-            updateArticle(editingArticle.id, updated);
+            if (editingArticle.id) {
+              updateArticle(editingArticle.id, updated);
+            }
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}

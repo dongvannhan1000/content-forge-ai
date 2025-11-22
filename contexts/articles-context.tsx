@@ -9,14 +9,25 @@ import * as articlesService from '@/services/articles.service';
  * Articles Context
  * 
  * Purpose: Provides global articles state and methods to the entire app.
- * Subscribes to Firestore once when user logs in and shares state across all components.
+ * Subscribes to Firestore for all 3 article status types (draft, scheduled, published).
  * This eliminates unnecessary refetching when navigating between tabs.
  */
 
 interface ArticlesContextType {
-    articles: GeneratedArticle[];
-    isLoading: boolean;
+    // Separate arrays for each status
+    draftArticles: GeneratedArticle[];
+    scheduledArticles: GeneratedArticle[];
+    publishedArticles: GeneratedArticle[];
+
+    // Loading states
+    isLoadingDrafts: boolean;
+    isLoadingScheduled: boolean;
+    isLoadingPublished: boolean;
+
+    // Shared error state
     error: string | null;
+
+    // Methods
     addArticle: (article: Omit<GeneratedArticle, 'id'>) => Promise<string>;
     updateArticle: (articleId: string, updates: Partial<GeneratedArticle>) => Promise<void>;
     deleteArticle: (articleId: string) => Promise<void>;
@@ -27,33 +38,84 @@ const ArticlesContext = createContext<ArticlesContextType | undefined>(undefined
 
 export function ArticlesProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
-    const [articles, setArticles] = useState<GeneratedArticle[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Separate state for each article type
+    const [draftArticles, setDraftArticles] = useState<GeneratedArticle[]>([]);
+    const [scheduledArticles, setScheduledArticles] = useState<GeneratedArticle[]>([]);
+    const [publishedArticles, setPublishedArticles] = useState<GeneratedArticle[]>([]);
+
+    // Separate loading states
+    const [isLoadingDrafts, setIsLoadingDrafts] = useState(true);
+    const [isLoadingScheduled, setIsLoadingScheduled] = useState(true);
+    const [isLoadingPublished, setIsLoadingPublished] = useState(true);
+
     const [error, setError] = useState<string | null>(null);
 
-    // Subscribe to real-time DRAFT article updates
-    // Only re-subscribe when user.uid changes (not when user object changes)
+    // Subscribe to DRAFT articles
     useEffect(() => {
         if (!user || !user.uid) {
-            setArticles([]);
-            setIsLoading(false);
+            setDraftArticles([]);
+            setIsLoadingDrafts(false);
             return;
         }
 
-        setIsLoading(true);
+        setIsLoadingDrafts(true);
         const unsubscribe = articlesService.subscribeToUserArticlesByStatus(
             user.uid,
-            'draft', // Only show draft articles
+            'draft',
             (updatedArticles) => {
-                setArticles(updatedArticles);
-                setIsLoading(false);
+                setDraftArticles(updatedArticles);
+                setIsLoadingDrafts(false);
                 setError(null);
             }
         );
 
-        // Cleanup subscription on unmount or user change
         return () => unsubscribe();
-    }, [user?.uid]); // Only depend on uid, not the entire user object
+    }, [user?.uid]);
+
+    // Subscribe to SCHEDULED articles
+    useEffect(() => {
+        if (!user || !user.uid) {
+            setScheduledArticles([]);
+            setIsLoadingScheduled(false);
+            return;
+        }
+
+        setIsLoadingScheduled(true);
+        const unsubscribe = articlesService.subscribeToUserArticlesByStatus(
+            user.uid,
+            'scheduled',
+            (updatedArticles) => {
+                setScheduledArticles(updatedArticles);
+                setIsLoadingScheduled(false);
+                setError(null);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [user?.uid]);
+
+    // Subscribe to PUBLISHED articles
+    useEffect(() => {
+        if (!user || !user.uid) {
+            setPublishedArticles([]);
+            setIsLoadingPublished(false);
+            return;
+        }
+
+        setIsLoadingPublished(true);
+        const unsubscribe = articlesService.subscribeToUserArticlesByStatus(
+            user.uid,
+            'published',
+            (updatedArticles) => {
+                setPublishedArticles(updatedArticles);
+                setIsLoadingPublished(false);
+                setError(null);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [user?.uid]);
 
     /**
      * Create a new article
@@ -118,15 +180,31 @@ export function ArticlesProvider({ children }: { children: React.ReactNode }) {
     // Memoize context value to prevent unnecessary re-renders
     const value = useMemo(
         () => ({
-            articles,
-            isLoading,
+            draftArticles,
+            scheduledArticles,
+            publishedArticles,
+            isLoadingDrafts,
+            isLoadingScheduled,
+            isLoadingPublished,
             error,
             addArticle,
             updateArticle,
             deleteArticle,
             getArticle,
         }),
-        [articles, isLoading, error, addArticle, updateArticle, deleteArticle, getArticle]
+        [
+            draftArticles,
+            scheduledArticles,
+            publishedArticles,
+            isLoadingDrafts,
+            isLoadingScheduled,
+            isLoadingPublished,
+            error,
+            addArticle,
+            updateArticle,
+            deleteArticle,
+            getArticle,
+        ]
     );
 
     return (

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
-import { useArticles } from '@/hooks/useArticles';
+import { usePublishedArticles } from '@/hooks/useArticles';
 import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,38 +11,29 @@ import { Edit, Copy, Eye } from 'lucide-react';
 import { EditArticleModal } from '@/components/modals/edit-article-modal';
 
 export default function PublishedPage() {
-  const { articles, updateArticle, addArticle, deleteArticle } = useArticles();
+  const { articles, updateArticle, addArticle, deleteArticle } = usePublishedArticles();
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('');
 
-  const publishedArticles = useMemo(() => {
-    const now = new Date();
-    return articles.filter(a => {
-      if (a.status === 'published') return true;
-      if (a.status === 'scheduled' && a.scheduledAt && a.scheduledAt < now) {
-        updateArticle(a.id, { status: 'published' });
-        return true;
-      }
-      return false;
-    });
-  }, [articles, updateArticle]);
-  
-  const filteredArticles = publishedArticles.filter(article => {
+  // No need to filter by status or check scheduled date - articles are already published
+  const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPlatform = !platformFilter || article.platforms?.includes(platformFilter);
     return matchesSearch && matchesPlatform;
   });
 
   const handleDuplicateToDraft = (article: Article) => {
-    const { id, createdAt, ...rest } = article;
+    const { id, ...rest } = article;
     addArticle({
       ...rest,
       status: 'draft',
+      createdAt: new Date(), // New createdAt for the duplicate
     });
   };
 
   const handleSchedule = (article: Article) => {
+    if (!article.id) return;
     updateArticle(article.id, { status: 'draft' });
   };
 
@@ -55,7 +46,7 @@ export default function PublishedPage() {
           <div className="p-6 max-w-7xl mx-auto">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-foreground mb-4">Published Articles</h1>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <input
                   type="text"
@@ -151,7 +142,9 @@ export default function PublishedPage() {
         <EditArticleModal
           article={editingArticle}
           onSave={(updated) => {
-            updateArticle(editingArticle.id, updated);
+            if (editingArticle.id) {
+              updateArticle(editingArticle.id, updated);
+            }
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}
