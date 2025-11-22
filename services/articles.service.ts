@@ -20,7 +20,8 @@ import { isFirestoreConfigured, COLLECTIONS, timestampToDate } from './firestore
 /**
  * Article Service
  * 
- * Handles all Firestore operations related to articles
+ * Handles all Firestore operations for articles.
+ * Articles are stored in the 'generated_articles' collection.
  */
 
 /**
@@ -78,7 +79,7 @@ export async function createArticle(
             createdAt: article.createdAt || new Date(),
         });
 
-        const docRef = await addDoc(collection(db, COLLECTIONS.ARTICLES), {
+        const docRef = await addDoc(collection(db, COLLECTIONS.GENERATED_ARTICLES), {
             ...articleData,
             userId,
         });
@@ -97,7 +98,7 @@ export async function getArticle(articleId: string): Promise<Article | null> {
     if (!isFirestoreConfigured()) return null;
 
     try {
-        const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
+        const docRef = doc(db, COLLECTIONS.GENERATED_ARTICLES, articleId);
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
@@ -119,7 +120,7 @@ export async function getUserArticles(userId: string): Promise<Article[]> {
 
     try {
         const q = query(
-            collection(db, COLLECTIONS.ARTICLES),
+            collection(db, COLLECTIONS.GENERATED_ARTICLES),
             where('userId', '==', userId),
             orderBy('createdAt', 'desc')
         );
@@ -146,11 +147,14 @@ export async function updateArticle(
     }
 
     try {
-        const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
+        const docRef = doc(db, COLLECTIONS.GENERATED_ARTICLES, articleId);
         const updateData = articleToFirestore(updates);
 
         // Remove id from updates if present
         delete updateData.id;
+
+        // Add updatedAt timestamp
+        updateData.updatedAt = Timestamp.now();
 
         await updateDoc(docRef, updateData);
     } catch (error: any) {
@@ -168,7 +172,7 @@ export async function deleteArticle(articleId: string): Promise<void> {
     }
 
     try {
-        const docRef = doc(db, COLLECTIONS.ARTICLES, articleId);
+        const docRef = doc(db, COLLECTIONS.GENERATED_ARTICLES, articleId);
         await deleteDoc(docRef);
     } catch (error: any) {
         console.error('Error deleting article:', error);
@@ -191,7 +195,7 @@ export function subscribeToUserArticles(
     }
 
     const q = query(
-        collection(db, COLLECTIONS.ARTICLES),
+        collection(db, COLLECTIONS.GENERATED_ARTICLES),
         where('userId', '==', userId),
         orderBy('createdAt', 'desc')
     );

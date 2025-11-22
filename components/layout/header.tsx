@@ -11,7 +11,6 @@ export function Header() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
-  console.log(user);
 
   // Initialize theme from DOM on mount (client-side only)
   useEffect(() => {

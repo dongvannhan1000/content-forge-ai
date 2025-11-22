@@ -1,5 +1,8 @@
 export type GenerationMode = 'topics' | 'image' | 'website';
 
+/**
+ * Article interface - Used for UI and display
+ */
 export interface Article {
   id: string;
   title: string;
@@ -14,25 +17,53 @@ export interface Article {
   createdAt?: Date;
 }
 
+/**
+ * GeneratedArticle - Stored in 'generated_articles' collection
+ * This is the actual Firestore document structure
+ */
+export interface GeneratedArticle {
+  id?: string; // Document ID
+  userId: string; // Owner of the article
+  title: string;
+  content: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+  topic?: string;
+  mode: GenerationMode;
+  status: 'draft' | 'scheduled' | 'published';
+  scheduledAt?: any; // Firestore Timestamp
+  platforms?: string[];
+  createdAt: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+  jobId?: string; // Optional reference to generation job
+}
+
 export interface ScheduledArticle extends Article {
   docId: string;
   userId: string;
   scheduledTime: number;
 }
 
+/**
+ * GenerationJob - Stored in 'generation_jobs' collection
+ * Represents a batch generation task
+ */
 export interface GenerationJob {
-  docId?: string;
-  userId: string;
-  mode: GenerationMode; // 'topics' | 'image' | 'website' - for future batch expansion
-  topic?: string; // Optional - only for topic mode
-  count: number;
+  id?: string; // Document ID
+  userId: string; // Owner of the job
+  mode: GenerationMode; // 'topics' | 'image' | 'website'
+  topic?: string; // For topic mode
+  count: number; // Number of articles to generate
   language: string;
   systemPrompt: string;
   imagePromptSuffix?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  createdAt: any;
-  progress?: number;
+  progress?: number; // 0-100
   error?: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+  completedAt?: any; // Firestore Timestamp
+  generatedArticleIds?: string[]; // IDs of articles created by this job
 }
 
 export interface UserSettings {
@@ -78,12 +109,18 @@ export interface GeneratorSettings {
   imageSettings: ImageSettings;
 }
 
-// User type for authentication
+/**
+ * User type - Stored in 'users' collection
+ * Settings are stored as a nested field within the user document
+ */
 export interface User {
   uid: string;
   email: string | null;
   name: string | null;
   photoURL?: string | null;
+  settings?: UserSettings; // Settings stored within user document
+  createdAt?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
 }
 
 // Firebase error types

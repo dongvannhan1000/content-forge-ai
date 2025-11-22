@@ -12,14 +12,18 @@ export function isFirestoreConfigured(): boolean {
     return db !== undefined && db !== null;
 }
 
-// Collection names
+/**
+ * Collection names - Aligned with proven database structure
+ * 
+ * This project uses 3 main Firestore collections:
+ * - users: stores user profiles and their settings
+ * - generated_articles: stores all generated articles
+ * - generation_jobs: stores batch generation job information
+ */
 export const COLLECTIONS = {
-    ARTICLES: 'articles',
     USERS: 'users',
-    USER_SETTINGS: 'userSettings',
-    SCHEDULES: 'schedules',
-    GENERATION_JOBS: 'generation_jobs',
     GENERATED_ARTICLES: 'generated_articles',
+    GENERATION_JOBS: 'generation_jobs',
 } as const;
 
 /**
