@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { User } from '@/types';
 import * as authService from '@/services/auth.service';
 
@@ -9,6 +9,7 @@ import * as authService from '@/services/auth.service';
  * 
  * Purpose: Provides authentication state and methods to the entire app.
  * Now integrated with Firebase Authentication through the auth service.
+ * Optimized with useMemo and useCallback to prevent unnecessary re-renders.
  */
 
 interface AuthContextType {
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const user = await authService.loginWithEmail(email, password);
@@ -46,9 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       throw error;
     }
-  };
+  }, []);
 
-  const signup = async (name: string, email: string, password: string) => {
+  const signup = useCallback(async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
       const user = await authService.signupWithEmail(name, email, password);
@@ -57,9 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authService.logout();
       setUser(null);
@@ -67,18 +68,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       await authService.resetPassword(email);
     } catch (error: any) {
       throw error;
     }
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      login,
+      signup,
+      logout,
+      resetPassword,
+    }),
+    [user, isLoading, login, signup, logout, resetPassword]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, resetPassword }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

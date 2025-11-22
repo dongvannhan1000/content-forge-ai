@@ -7,15 +7,14 @@ import { useRouter } from 'next/navigation';
 
 export function Header() {
   const [isDark, setIsDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
-  console.log(user)
+  console.log(user);
 
+  // Initialize theme from DOM on mount (client-side only)
   useEffect(() => {
-    setMounted(true);
     const darkMode = document.documentElement.classList.contains('dark');
     setIsDark(darkMode);
   }, []);
@@ -39,19 +38,12 @@ export function Header() {
     router.push('/auth/login');
   };
 
-  if (!mounted) {
-    return (
-      <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6">
-        <h2 className="text-xl font-bold text-foreground">AI Content Studio</h2>
-      </header>
-    );
-  }
-
   return (
     <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6">
       <h2 className="text-xl font-bold text-foreground">AI Content Studio</h2>
       <div className="flex items-center gap-4">
-        {user && (
+        {/* User section - only hide during initial auth check */}
+        {!isLoading && user && (
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
@@ -88,10 +80,12 @@ export function Header() {
           </div>
         )}
 
+        {/* Theme toggle - suppressHydrationWarning prevents hydration mismatch warning */}
         <button
           onClick={toggleTheme}
           className="p-2 hover:bg-secondary rounded-lg transition-colors"
           aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+          suppressHydrationWarning
         >
           {isDark ? (
             <Sun className="w-5 h-5 text-muted-foreground" />
