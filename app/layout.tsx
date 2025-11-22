@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SettingsProvider } from '@/contexts/settings-context'
+import { ArticlesProvider } from '@/contexts/articles-context'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -42,7 +43,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
-              {children}
+              <ArticlesProvider>
+                {children}
+              </ArticlesProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
