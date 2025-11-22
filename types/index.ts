@@ -82,7 +82,7 @@ export interface GeneratorSettings {
 export interface User {
   uid: string;
   email: string | null;
-  displayName?: string | null;
+  name: string | null;
   photoURL?: string | null;
 }
 

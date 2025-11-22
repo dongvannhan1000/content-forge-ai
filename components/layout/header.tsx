@@ -12,6 +12,8 @@ export function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
+  console.log(user)
+
   useEffect(() => {
     setMounted(true);
     const darkMode = document.documentElement.classList.contains('dark');
@@ -21,13 +23,13 @@ export function Header() {
   const toggleTheme = () => {
     const newIsDark = !isDark;
     setIsDark(newIsDark);
-    
+
     if (newIsDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
+
     localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
     document.documentElement.style.colorScheme = newIsDark ? 'dark' : 'light';
   };
@@ -56,8 +58,8 @@ export function Header() {
               className="flex items-center gap-3 px-3 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
               <img
-                src={user.avatar || "/placeholder.svg"}
-                alt={user.name}
+                src={user.photoURL || "/placeholder-user.jpg"}
+                alt={user.name || 'User avatar'}
                 className="w-8 h-8 rounded-full"
               />
               <div className="text-left">

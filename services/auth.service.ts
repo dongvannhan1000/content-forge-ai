@@ -32,7 +32,7 @@ function mapFirebaseUserToUser(firebaseUser: FirebaseUser): User {
     return {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
+        name: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
     };
 }
