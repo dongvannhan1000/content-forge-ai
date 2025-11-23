@@ -10,6 +10,7 @@ interface FormTopicsProps {
     audience: string;
     language: string;
     wordCount: { min: number; max: number };
+    count: number; // Number of articles to generate
   }) => void;
 }
 
@@ -23,6 +24,7 @@ export function FormTopics({ onGenerate }: FormTopicsProps) {
   const [language, setLanguage] = useState('English');
   const [wordMin, setWordMin] = useState(300);
   const [wordMax, setWordMax] = useState(800);
+  const [count, setCount] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +35,7 @@ export function FormTopics({ onGenerate }: FormTopicsProps) {
         audience,
         language,
         wordCount: { min: wordMin, max: wordMax },
+        count,
       });
     }
   };
@@ -112,6 +115,19 @@ export function FormTopics({ onGenerate }: FormTopicsProps) {
             <p className="text-xs text-muted-foreground mt-1">Max</p>
           </div>
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">Number of Articles</label>
+        <input
+          type="number"
+          value={count}
+          onChange={(e) => setCount(parseInt(e.target.value))}
+          min="1"
+          max="10"
+          className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <p className="text-xs text-muted-foreground mt-1">Generate 1-10 articles at once</p>
       </div>
 
       <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3">

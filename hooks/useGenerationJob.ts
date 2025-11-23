@@ -51,6 +51,7 @@ export function useGenerationJob() {
         mode: GenerationMode;
         topic?: string;
         count: number;
+        imageFiles?: File[];
     }) => {
         if (!user) {
             setError('User must be authenticated');
@@ -61,6 +62,16 @@ export function useGenerationJob() {
             setError(null);
             setIsGenerating(true);
 
+            let imageUrls: string[] | undefined;
+
+            // If image mode, upload images first
+            if (jobData.mode === 'image' && jobData.imageFiles && jobData.imageFiles.length > 0) {
+                const { uploadMultipleImages } = await import('@/services/storage.service');
+                imageUrls = await uploadMultipleImages(user.uid, jobData.imageFiles);
+                // Set count to match number of uploaded images
+                jobData.count = imageUrls.length;
+            }
+
             const jobId = await jobsService.createGenerationJob(user.uid, {
                 mode: jobData.mode,
                 topic: jobData.topic,
@@ -68,6 +79,7 @@ export function useGenerationJob() {
                 language: settings.ai.contentLanguage,
                 systemPrompt: settings.ai.systemPrompt,
                 imagePromptSuffix: settings.vision.imagePromptSuffix,
+                imageUrls: imageUrls,
             });
 
             // Set initial job state
@@ -80,6 +92,7 @@ export function useGenerationJob() {
                 language: settings.ai.contentLanguage,
                 systemPrompt: settings.ai.systemPrompt,
                 imagePromptSuffix: settings.vision.imagePromptSuffix,
+                imageUrls: imageUrls,
                 status: 'pending',
                 progress: 0,
                 createdAt: new Date(),

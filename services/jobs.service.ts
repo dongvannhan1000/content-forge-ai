@@ -45,6 +45,7 @@ export async function createGenerationJob(
             language: jobData.language,
             systemPrompt: jobData.systemPrompt,
             imagePromptSuffix: jobData.imagePromptSuffix,
+            imageUrls: jobData.imageUrls, // Include imageUrls for image mode
             status: 'pending',
             progress: 0,
             createdAt: Timestamp.now(),

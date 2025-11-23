@@ -38,10 +38,10 @@ function mapFirestoreArticle(id: string, data: DocumentData): GeneratedArticle {
         topic: data.topic,
         mode: data.mode || 'topics', // Default for old records
         status: data.status || 'published', // Old records default to published
-        scheduledAt: data.scheduledAt,
+        scheduledAt: data.scheduledAt || null,
         platforms: data.platforms,
         createdAt: data.createdAt || Timestamp.now(),
-        updatedAt: data.updatedAt,
+        updatedAt: data.updatedAt || Timestamp.now(),
         jobId: data.jobId,
     };
 }
@@ -53,6 +53,13 @@ function articleToFirestore(article: Partial<GeneratedArticle>): DocumentData {
     const data: DocumentData = {
         ...article,
     };
+
+    // Remove undefined values - Firestore doesn't accept them
+    Object.keys(data).forEach(key => {
+        if (data[key] === undefined) {
+            delete data[key];
+        }
+    });
 
     // Timestamps are already in Firestore format from GeneratedArticle
     // No conversion needed
@@ -147,6 +154,7 @@ export async function updateArticle(
     try {
         const docRef = doc(db, COLLECTIONS.GENERATED_ARTICLES, articleId);
         const updateData = articleToFirestore(updates);
+
 
         // Remove id from updates if present
         delete updateData.id;

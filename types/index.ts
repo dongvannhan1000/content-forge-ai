@@ -45,6 +45,7 @@ export interface GenerationJob {
   language: string;
   systemPrompt: string;
   imagePromptSuffix?: string;
+  imageUrls?: string[]; // For image mode - uploaded image URLs
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress?: number; // 0-100
   error?: string;

@@ -518,23 +518,33 @@ exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
             if (jobData.imagePromptSuffix && articleText.imagePrompt) {
                 articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
             }
-            // 2. Generate image
-            logger.info(`[JobV2 ${jobId}] Calling Imagen for image generation...`);
-            const imageResponse = await ai.models.generateImages({
-                model: "imagen-4.0-generate-001",
-                prompt: articleText.imagePrompt,
-                config: {
-                    numberOfImages: 1,
-                    outputMimeType: "image/jpeg",
-                    aspectRatio: "1:1",
-                },
-            });
-            const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
-            if (!base64ImageBytes) {
-                throw new Error("No image generated");
+            let imageUrl;
+            // 2. Check if we should use uploaded image or generate new one
+            if (jobData.imageUrls && jobData.imageUrls.length > 0) {
+                // Use the uploaded image URL (matching by index)
+                const imageIndex = i - 1; // Convert to 0-based index
+                imageUrl = jobData.imageUrls[imageIndex] || jobData.imageUrls[0]; // Fallback to first image
+                logger.info(`[JobV2 ${jobId}] Using uploaded image URL for article ${i}.`);
             }
-            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-            logger.info(`[JobV2 ${jobId}] Image generation successful.`);
+            else {
+                // Generate image using Imagen
+                logger.info(`[JobV2 ${jobId}] Calling Imagen for image generation...`);
+                const imageResponse = await ai.models.generateImages({
+                    model: "imagen-4.0-generate-001",
+                    prompt: articleText.imagePrompt,
+                    config: {
+                        numberOfImages: 1,
+                        outputMimeType: "image/jpeg",
+                        aspectRatio: "1:1",
+                    },
+                });
+                const base64ImageBytes = imageResponse.generatedImages?.[0]?.image?.imageBytes;
+                if (!base64ImageBytes) {
+                    throw new Error("No image generated");
+                }
+                imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+                logger.info(`[JobV2 ${jobId}] Image generation successful.`);
+            }
             // 3. Save to 'generated_articles' with mode and status
             logger.info(`[JobV2 ${jobId}] Saving article with mode and status to generated_articles.`);
             await db.collection("generated_articles").add({

@@ -125,3 +125,36 @@ export function generateStoragePath(
     const filename = `${timestamp}_${Math.random().toString(36).substring(7)}.${extension}`;
     return `${folder}/${userId}/${filename}`;
 }
+
+/**
+ * Upload multiple images to Firebase Storage
+ * @param userId - The user ID
+ * @param files - Array of files to upload
+ * @param folder - The storage folder (default: 'user-uploads')
+ * @returns Array of download URLs in the same order as input files
+ */
+export async function uploadMultipleImages(
+    userId: string,
+    files: File[],
+    folder: string = 'user-uploads'
+): Promise<string[]> {
+    try {
+        // Upload all files concurrently
+        const uploadPromises = files.map(async (file, index) => {
+            const path = generateStoragePath(userId, file.name, folder);
+            const url = await uploadFile(file, path);
+            return { url, index };
+        });
+
+        const results = await Promise.all(uploadPromises);
+
+        // Sort by original index to maintain order
+        results.sort((a, b) => a.index - b.index);
+
+        return results.map(r => r.url);
+    } catch (error: any) {
+        console.error('Error uploading multiple images:', error);
+        throw new Error(error.message || 'Failed to upload images');
+    }
+}
+

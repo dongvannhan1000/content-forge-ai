@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 
 interface FormImageProps {
   onGenerate: (data: {
-    imageFile: File;
+    imageFiles: File[];
     instructions: string;
     tone: string;
     audience: string;
@@ -18,30 +18,61 @@ const TONES = ['Informative', 'Casual', 'Professional', 'Playful'];
 const LANGUAGES = ['English', 'Vietnamese', 'Spanish', 'French'];
 
 export function FormImage({ onGenerate }: FormImageProps) {
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [instructions, setInstructions] = useState('');
   const [tone, setTone] = useState('Informative');
   const [audience, setAudience] = useState('');
   const [language, setLanguage] = useState('English');
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setImageFiles(files);
+
+      // Generate previews for all files
+      const previews: string[] = [];
+      let loadedCount = 0;
+
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          previews.push(reader.result as string);
+          loadedCount++;
+
+          if (loadedCount === files.length) {
+            setImagePreviews(previews);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+
+    setImageFiles(newFiles);
+    setImagePreviews(newPreviews);
+
+    // Reset input file to allow re-uploading the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // If all images removed, also reset the input
+    if (newFiles.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (imageFile) {
+    if (imageFiles.length > 0) {
       onGenerate({
-        imageFile,
+        imageFiles,
         instructions,
         tone,
         audience,
@@ -53,20 +84,47 @@ export function FormImage({ onGenerate }: FormImageProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Upload Image *</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Upload Images *</label>
         <label className="relative border-2 border-dashed border-border rounded-lg p-8 cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center">
-          {imagePreview ? (
-            <img src={imagePreview || "/placeholder.svg"} alt="Preview" className="w-full h-32 object-cover rounded" />
-          ) : (
+          {imagePreviews.length === 0 ? (
             <>
               <Upload className="w-8 h-8 text-muted-foreground mb-2" />
               <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
-              <span className="text-xs text-muted-foreground">PNG, JPG up to 10MB</span>
+              <span className="text-xs text-muted-foreground">PNG, JPG up to 10MB (multiple files)</span>
             </>
+          ) : (
+            <div className="w-full">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={preview || "/placeholder.svg"}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-24 object-cover rounded"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeImage(index);
+                      }}
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                {imageFiles.length} image{imageFiles.length !== 1 ? 's' : ''} selected
+              </p>
+            </div>
           )}
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleImageChange}
             className="hidden"
             required
@@ -123,7 +181,7 @@ export function FormImage({ onGenerate }: FormImageProps) {
       </div>
 
       <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3">
-        Generate Content from Image
+        Generate Content from {imageFiles.length || 0} Image{imageFiles.length !== 1 ? 's' : ''}
       </Button>
     </form>
   );

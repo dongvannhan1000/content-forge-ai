@@ -26,16 +26,16 @@ export default function GeneratorPage() {
     // Extract parameters based on mode
     const jobData: any = {
       mode,
-      count: 1, // Default count
     };
 
     if (mode === 'topics') {
       jobData.topic = data.topic;
       jobData.count = data.count || 1;
     } else if (mode === 'image') {
-      // For image mode, we'll generate multiple articles from one image
-      jobData.topic = 'Image analysis content';
-      jobData.count = data.images?.length || 1;
+      // For image mode, pass the image files to the hook
+      // The hook will upload them and set count based on number of images
+      jobData.imageFiles = data.imageFiles;
+      jobData.count = data.imageFiles?.length || 1;
     } else if (mode === 'website') {
       jobData.topic = `Content from ${data.url}`;
       jobData.count = 1;
