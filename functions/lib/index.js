@@ -597,6 +597,12 @@ exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
                 });
                 articleText = JSON.parse(textResponse.text.trim());
                 logger.info(`[JobV2 ${jobId}] Text generation successful.`);
+                // CHECKPOINT: Check cancellation after text generation
+                const afterTextSnapshot = await jobRef.get();
+                if (!afterTextSnapshot.exists || afterTextSnapshot.data()?.status === "cancelled") {
+                    logger.info(`JobV2 ${jobId} was cancelled after text generation. Halting.`);
+                    return;
+                }
                 // Apply imagePromptSuffix if provided
                 if (jobData.imagePromptSuffix && articleText.imagePrompt) {
                     articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
@@ -619,6 +625,12 @@ exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
                 // Upload to Storage
                 imageUrl = await uploadBase64ImageToStorage(base64ImageBytes, jobData.userId, `jobv2_${jobId}_${i}.jpg`);
                 logger.info(`[JobV2 ${jobId}] Image uploaded to Storage.`);
+            }
+            // CHECKPOINT: Check cancellation before saving
+            const finalCheckSnapshot = await jobRef.get();
+            if (!finalCheckSnapshot.exists || finalCheckSnapshot.data()?.status === "cancelled") {
+                logger.info(`JobV2 ${jobId} was cancelled before saving. Halting.`);
+                return;
             }
             // 3. Save to 'generated_articles' with mode and status
             logger.info(`[JobV2 ${jobId}] Saving article with mode and status to generated_articles.`);
