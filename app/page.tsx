@@ -13,7 +13,10 @@ import { ProgressBar } from '@/components/generator/progress-bar';
 import { LoadingOverlay } from '@/components/generator/loading-overlay';
 import { useArticles } from '@/hooks/useArticles';
 import { useGenerationJob } from '@/hooks/useGenerationJob';
+import { useSettingsContext } from '@/contexts/settings-context';
 import { GenerationMode, GeneratedArticle } from '@/types';
+import * as articleService from '@/services/article.service';
+import { toast } from '@/hooks/use-toast';
 
 export default function GeneratorPage() {
   const [mode, setMode] = useState<GenerationMode>('topics');
@@ -21,6 +24,8 @@ export default function GeneratorPage() {
   const [editingArticle, setEditingArticle] = useState<GeneratedArticle | null>(null);
   const [schedulingArticle, setSchedulingArticle] = useState<GeneratedArticle | null>(null);
   const { isGenerating, progress, createJob } = useGenerationJob();
+  const { settings } = useSettingsContext();
+  const [postingArticleId, setPostingArticleId] = useState<string | null>(null);
 
   const handleGenerate = async (data: any) => {
     // Extract parameters based on mode
@@ -59,6 +64,65 @@ export default function GeneratorPage() {
       platforms,
     });
     setSchedulingArticle(null);
+  };
+
+  const handlePostNow = async (article: GeneratedArticle) => {
+    if (!article.id) return;
+
+    const webhookUrl = settings.integration.webhookUrl;
+
+    if (!webhookUrl || webhookUrl.trim() === '') {
+      toast({
+        title: 'Error',
+        description: 'Please configure webhook URL in Settings before posting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPostingArticleId(article.id);
+
+    try {
+      await articleService.postArticleToWebhook(article, webhookUrl);
+
+      // Update article status to published
+      await updateArticle(article.id, {
+        status: 'published',
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Article posted successfully!',
+      });
+    } catch (error: any) {
+      console.error('Error posting article:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to post article',
+        variant: 'destructive',
+      });
+    } finally {
+      setPostingArticleId(null);
+    }
+  };
+
+  const handleRegenerateText = async (
+    article: GeneratedArticle,
+    customPrompt: string
+  ): Promise<{ title: string; content: string }> => {
+    return await articleService.regenerateArticleText(article, customPrompt);
+  };
+
+  const handleRegenerateImagePrompt = async (
+    article: GeneratedArticle,
+    customPrompt: string,
+    suffix: string
+  ): Promise<string> => {
+    return await articleService.regenerateImagePrompt(article, customPrompt, suffix);
+  };
+
+  const handleGenerateImage = async (imagePrompt: string): Promise<string> => {
+    return await articleService.generateImageFromPrompt(imagePrompt);
   };
 
   return (
@@ -101,6 +165,8 @@ export default function GeneratorPage() {
                         onEdit={() => setEditingArticle(article)}
                         onSchedule={() => setSchedulingArticle(article)}
                         onDelete={() => article.id && deleteArticle(article.id)}
+                        onPostNow={() => handlePostNow(article)}
+                        isPosting={postingArticleId === article.id}
                       />
                     ))}
                   </div>
@@ -114,11 +180,16 @@ export default function GeneratorPage() {
       {editingArticle && (
         <EditArticleModal
           article={editingArticle}
+          systemPrompt={settings.ai.systemPrompt}
+          imagePromptSuffix={settings.vision.imagePromptSuffix}
           onSave={(updated) => {
             updateArticle(editingArticle.id!, updated);
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}
+          onRegenerateText={handleRegenerateText}
+          onRegenerateImagePrompt={handleRegenerateImagePrompt}
+          onGenerateImage={handleGenerateImage}
         />
       )}
 

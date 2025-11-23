@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getFunctions, Functions } from 'firebase/functions';
 
 /**
  * Firebase Configuration
@@ -62,6 +63,7 @@ let app: FirebaseApp | undefined;
 let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
 let storageInstance: FirebaseStorage | undefined;
+let functionsInstance: Functions | undefined;
 
 if (typeof window !== 'undefined' && isConfigured()) {
     // Only initialize on client-side and when configured
@@ -75,6 +77,7 @@ if (typeof window !== 'undefined' && isConfigured()) {
     authInstance = getAuth(app);
     dbInstance = getFirestore(app);
     storageInstance = getStorage(app);
+    functionsInstance = getFunctions(app);
 } else if (typeof window !== 'undefined') {
     // Warn in browser if not configured
     validateConfig();
@@ -85,5 +88,6 @@ if (typeof window !== 'undefined' && isConfigured()) {
 export const auth = authInstance!;
 export const db = dbInstance!;
 export const storage = storageInstance!;
+export const functions = functionsInstance!;
 export default app;
 

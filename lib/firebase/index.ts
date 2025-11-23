@@ -5,5 +5,5 @@
  * This allows clean imports throughout the app: import { auth, db } from '@/lib/firebase'
  */
 
-export { auth, db, storage } from './config';
+export { auth, db, storage, functions } from './config';
 export { default as app } from './config';

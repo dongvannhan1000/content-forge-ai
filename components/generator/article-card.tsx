@@ -3,13 +3,15 @@
 import { Article } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Clock } from 'lucide-react';
+import { Edit, Trash2, Clock, Send, Loader2 } from 'lucide-react';
 
 interface ArticleCardProps {
   article: Article;
   onEdit: () => void;
   onSchedule: () => void;
   onDelete: () => void;
+  onPostNow?: () => void;
+  isPosting?: boolean;
 }
 
 const MODE_LABELS: Record<Article['mode'], string> = {
@@ -24,7 +26,7 @@ const STATUS_COLORS: Record<Article['status'], string> = {
   published: 'bg-accent/20',
 };
 
-export function ArticleCard({ article, onEdit, onSchedule, onDelete }: ArticleCardProps) {
+export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, isPosting }: ArticleCardProps) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary transition-colors">
       {article.imageUrl && (
@@ -67,6 +69,27 @@ export function ArticleCard({ article, onEdit, onSchedule, onDelete }: ArticleCa
             <Clock className="w-4 h-4" />
             Schedule
           </Button>
+          {onPostNow && article.status === 'draft' && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={onPostNow}
+              disabled={isPosting}
+              className="flex-1 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isPosting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Post Now
+                </>
+              )}
+            </Button>
+          )}
           <button
             onClick={onDelete}
             className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"

@@ -4,15 +4,18 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { useScheduledArticles } from '@/hooks/useArticles';
+import { useSettingsContext } from '@/contexts/settings-context';
 import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, X, Eye } from 'lucide-react';
 import { EditArticleModal } from '@/components/modals/edit-article-modal';
 import { ScheduleArticleModal } from '@/components/modals/schedule-article-modal';
+import * as articleService from '@/services/article.service';
 
 export default function SchedulePage() {
   const { articles, updateArticle, deleteArticle } = useScheduledArticles();
+  const { settings } = useSettingsContext();
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [schedulingArticle, setSchedulingArticle] = useState<Article | null>(null);
   const [platformFilter, setPlatformFilter] = useState<string>('');
@@ -40,6 +43,25 @@ export default function SchedulePage() {
       platforms,
     });
     setSchedulingArticle(null);
+  };
+
+  const handleRegenerateText = async (
+    article: Article,
+    customPrompt: string
+  ): Promise<{ title: string; content: string }> => {
+    return await articleService.regenerateArticleText(article, customPrompt);
+  };
+
+  const handleRegenerateImagePrompt = async (
+    article: Article,
+    customPrompt: string,
+    suffix: string
+  ): Promise<string> => {
+    return await articleService.regenerateImagePrompt(article, customPrompt, suffix);
+  };
+
+  const handleGenerateImage = async (imagePrompt: string): Promise<string> => {
+    return await articleService.generateImageFromPrompt(imagePrompt);
   };
 
   return (
@@ -101,7 +123,7 @@ export default function SchedulePage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-foreground">
-                            {article.scheduledAt?.toLocaleDateString()} {article.scheduledAt?.toLocaleTimeString()}
+                            {article.scheduledAt?.toDate?.()?.toLocaleDateString() || 'N/A'} {article.scheduledAt?.toDate?.()?.toLocaleTimeString() || ''}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex gap-2 flex-wrap">
@@ -151,6 +173,8 @@ export default function SchedulePage() {
       {editingArticle && (
         <EditArticleModal
           article={editingArticle}
+          systemPrompt={settings.ai.systemPrompt}
+          imagePromptSuffix={settings.vision.imagePromptSuffix}
           onSave={(updated) => {
             if (editingArticle.id) {
               updateArticle(editingArticle.id, updated);
@@ -158,6 +182,9 @@ export default function SchedulePage() {
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}
+          onRegenerateText={handleRegenerateText}
+          onRegenerateImagePrompt={handleRegenerateImagePrompt}
+          onGenerateImage={handleGenerateImage}
         />
       )}
 

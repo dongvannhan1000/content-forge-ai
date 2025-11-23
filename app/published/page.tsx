@@ -4,14 +4,17 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { usePublishedArticles } from '@/hooks/useArticles';
+import { useSettingsContext } from '@/contexts/settings-context';
 import { Article } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Copy, Eye } from 'lucide-react';
 import { EditArticleModal } from '@/components/modals/edit-article-modal';
+import * as articleService from '@/services/article.service';
 
 export default function PublishedPage() {
   const { articles, updateArticle, addArticle, deleteArticle } = usePublishedArticles();
+  const { settings } = useSettingsContext();
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('');
@@ -35,6 +38,25 @@ export default function PublishedPage() {
   const handleSchedule = (article: Article) => {
     if (!article.id) return;
     updateArticle(article.id, { status: 'draft' });
+  };
+
+  const handleRegenerateText = async (
+    article: Article,
+    customPrompt: string
+  ): Promise<{ title: string; content: string }> => {
+    return await articleService.regenerateArticleText(article, customPrompt);
+  };
+
+  const handleRegenerateImagePrompt = async (
+    article: Article,
+    customPrompt: string,
+    suffix: string
+  ): Promise<string> => {
+    return await articleService.regenerateImagePrompt(article, customPrompt, suffix);
+  };
+
+  const handleGenerateImage = async (imagePrompt: string): Promise<string> => {
+    return await articleService.generateImageFromPrompt(imagePrompt);
   };
 
   return (
@@ -100,7 +122,9 @@ export default function PublishedPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 text-sm text-foreground">
-                            {article.scheduledAt?.toLocaleDateString() || article.createdAt.toLocaleDateString()}
+                            {article.scheduledAt?.toDate?.()?.toLocaleDateString() ||
+                              article.createdAt?.toDate?.()?.toLocaleDateString() ||
+                              'N/A'}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex gap-2 flex-wrap">
@@ -141,6 +165,8 @@ export default function PublishedPage() {
       {editingArticle && (
         <EditArticleModal
           article={editingArticle}
+          systemPrompt={settings.ai.systemPrompt}
+          imagePromptSuffix={settings.vision.imagePromptSuffix}
           onSave={(updated) => {
             if (editingArticle.id) {
               updateArticle(editingArticle.id, updated);
@@ -148,6 +174,9 @@ export default function PublishedPage() {
             setEditingArticle(null);
           }}
           onClose={() => setEditingArticle(null)}
+          onRegenerateText={handleRegenerateText}
+          onRegenerateImagePrompt={handleRegenerateImagePrompt}
+          onGenerateImage={handleGenerateImage}
         />
       )}
     </div>
