@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/providers/theme-provider'
 import { AuthProvider } from '@/contexts/auth-context'
 import { SettingsProvider } from '@/contexts/settings-context'
 import { ArticlesProvider } from '@/contexts/articles-context'
+import { JobProvider } from '@/contexts/job-context'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -44,7 +45,9 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <ArticlesProvider>
-                {children}
+                <JobProvider>
+                  {children}
+                </JobProvider>
               </ArticlesProvider>
             </SettingsProvider>
           </AuthProvider>

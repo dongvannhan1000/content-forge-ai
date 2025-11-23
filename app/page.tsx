@@ -9,11 +9,9 @@ import { FormWebsite } from '@/components/generator/form-website';
 import { ArticleCard } from '@/components/generator/article-card';
 import { EditArticleModal } from '@/components/modals/edit-article-modal';
 import { ScheduleArticleModal } from '@/components/modals/schedule-article-modal';
-import { ProgressBar } from '@/components/generator/progress-bar';
 import { CompactProgressBar } from '@/components/generator/compact-progress-bar';
-import { LoadingOverlay } from '@/components/generator/loading-overlay';
 import { useArticles } from '@/hooks/useArticles';
-import { useGenerationJob } from '@/hooks/useGenerationJob';
+import { useJob } from '@/contexts/job-context';
 import { useSettingsContext } from '@/contexts/settings-context';
 import { GenerationMode, GeneratedArticle } from '@/types';
 import * as articleService from '@/services/article.service';
@@ -24,7 +22,7 @@ export default function GeneratorPage() {
   const { articles, updateArticle, deleteArticle, isLoading } = useArticles();
   const [editingArticle, setEditingArticle] = useState<GeneratedArticle | null>(null);
   const [schedulingArticle, setSchedulingArticle] = useState<GeneratedArticle | null>(null);
-  const { isGenerating, progress, createJob } = useGenerationJob();
+  const { isGenerating, progress, createJob, cancelJob } = useJob();
   const { settings } = useSettingsContext();
   const [postingArticleId, setPostingArticleId] = useState<string | null>(null);
 
@@ -132,8 +130,6 @@ export default function GeneratorPage() {
 
   return (
     <MainLayout>
-      {/* <ProgressBar total={progress.total} completed={progress.current} isVisible={isGenerating} /> */}
-      {/* <LoadingOverlay isVisible={isGenerating} completed={progress.current} total={progress.total} /> */}
       <main className="flex-1 overflow-y-auto">
         <div className="p-6 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -148,11 +144,12 @@ export default function GeneratorPage() {
                   {mode === 'website' && <FormWebsite onGenerate={handleGenerate} />}
                 </div>
 
-                {/* Compact Progress Bar */}
+                {/* Compact Progress Bar - positioned below form */}
                 <CompactProgressBar
                   total={progress.total}
                   completed={progress.current}
                   isVisible={isGenerating}
+                  onCancel={cancelJob}
                 />
               </div>
             </div>
