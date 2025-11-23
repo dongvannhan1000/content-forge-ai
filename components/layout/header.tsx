@@ -39,7 +39,7 @@ export function Header() {
 
   return (
     <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6">
-      <h2 className="text-xl font-bold text-foreground">AI Content Studio</h2>
+      <h2 className="text-xl font-bold text-foreground">ContentForge AI</h2>
       <div className="flex items-center gap-4">
         {/* User section - only hide during initial auth check */}
         {!isLoading && user && (

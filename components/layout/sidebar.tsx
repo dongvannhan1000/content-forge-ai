@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -19,12 +20,17 @@ export function Sidebar() {
     <aside className="w-64 bg-card border-r border-border h-screen flex flex-col">
       <div className="p-6 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-primary-foreground" />
+          <div className="relative w-10 h-10 rounded-lg overflow-hidden">
+            <Image
+              src="/contentforge-icon.png"
+              alt="ContentForge AI Logo"
+              fill
+              className="object-cover"
+            />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-foreground">AI Content</h1>
-            <p className="text-xs text-muted-foreground">Studio</p>
+            <h1 className="font-bold text-lg text-foreground">ContentForge</h1>
+            <p className="text-xs text-muted-foreground">AI</p>
           </div>
         </div>
       </div>
@@ -50,7 +56,7 @@ export function Sidebar() {
       <div className="p-4 border-t border-border">
         <div className="px-4 py-3 rounded-lg bg-secondary/50">
           <p className="text-xs text-muted-foreground mb-2">© 2025</p>
-          <p className="text-xs text-muted-foreground">AI Content Studio</p>
+          <p className="text-xs text-muted-foreground">ContentForge AI</p>
         </div>
       </div>
     </aside>
