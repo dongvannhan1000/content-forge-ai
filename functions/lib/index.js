@@ -1,7 +1,7 @@
 "use strict";
 // File: functions/src/index.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processBatchGenerationJobV2 = exports.processBatchGenerationJob = exports.checkScheduledPosts = exports.regenerateImagePrompt = exports.generateImage = exports.regenerateArticleText = exports.generateArticleFromWebsite = exports.generateArticlesFromImages = exports.generateArticlesFromTopic = void 0;
+exports.cleanupArticleImage = exports.processBatchGenerationJobV2 = exports.processBatchGenerationJob = exports.checkScheduledPosts = exports.regenerateImagePrompt = exports.generateImage = exports.regenerateArticleText = exports.generateArticleFromWebsite = exports.generateArticlesFromImages = exports.generateArticlesFromTopic = void 0;
 // Sử dụng các import của Firebase Functions v2 hiện đại.
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -21,6 +21,37 @@ const db = admin.firestore();
 // Đây là cách làm được khuyến nghị và an toàn nhất.
 // Bạn phải cài đặt giá trị này trước khi deploy.
 const geminiApiKey = (0, params_1.defineString)("GEMINI_API_KEY");
+// ============================================================================
+// STORAGE UTILITIES
+// ============================================================================
+/**
+ * Upload base64 image to Firebase Storage
+ * @param base64Image - Base64 encoded image data
+ * @param userId - User ID for folder organization
+ * @param filename - Optional custom filename
+ * @returns Public URL of the uploaded image
+ */
+async function uploadBase64ImageToStorage(base64Image, userId, filename) {
+    const buffer = Buffer.from(base64Image, 'base64');
+    const fileName = filename || `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+    const filePath = `generated-images/${userId}/${fileName}`;
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(filePath);
+    await file.save(buffer, {
+        metadata: { contentType: 'image/jpeg' },
+        public: true,
+    });
+    return `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+}
+/**
+ * Extract storage path from a Storage URL
+ * @param url - Storage URL
+ * @returns Storage path or null if not a storage URL
+ */
+function extractStoragePathFromUrl(url) {
+    const match = url.match(/generated-images\/([^?]+)/);
+    return match ? `generated-images/${match[1]}` : null;
+}
 // ============================================================================
 // CALLABLE FUNCTIONS FOR FRONTEND
 // ============================================================================
@@ -234,7 +265,10 @@ exports.generateImage = (0, https_1.onCall)(async (request) => {
             },
         });
         const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-        return { imageUrl: `data:image/jpeg;base64,${base64ImageBytes}` };
+        // Upload to Storage instead of returning base64
+        const userId = request.auth.uid;
+        const imageUrl = await uploadBase64ImageToStorage(base64ImageBytes, userId);
+        return { imageUrl };
     }
     catch (error) {
         logger.error('Error generating image:', error);
@@ -429,8 +463,9 @@ exports.processBatchGenerationJob = (0, firestore_1.onDocumentCreated)({
             if (!base64ImageBytes) {
                 throw new Error("No image generated");
             }
-            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-            logger.info(`[Job ${jobId}] Image generation successful.`);
+            // Upload to Storage
+            const imageUrl = await uploadBase64ImageToStorage(base64ImageBytes, jobData.userId, `job_${jobId}_${i}.jpg`);
+            logger.info(`[Job ${jobId}] Image uploaded to Storage.`);
             // 3. Save to 'generated_articles' collection for user preview
             logger.info(`[Job ${jobId}] Saving generated article to Firestore generated_articles.`);
             await db.collection("generated_articles").add({
@@ -581,8 +616,9 @@ exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
                 if (!base64ImageBytes) {
                     throw new Error("No image generated");
                 }
-                imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-                logger.info(`[JobV2 ${jobId}] Image generation successful.`);
+                // Upload to Storage
+                imageUrl = await uploadBase64ImageToStorage(base64ImageBytes, jobData.userId, `jobv2_${jobId}_${i}.jpg`);
+                logger.info(`[JobV2 ${jobId}] Image uploaded to Storage.`);
             }
             // 3. Save to 'generated_articles' with mode and status
             logger.info(`[JobV2 ${jobId}] Saving article with mode and status to generated_articles.`);
@@ -610,6 +646,42 @@ exports.processBatchGenerationJobV2 = (0, firestore_1.onDocumentCreated)({
             status: "failed",
             error: error.message || "An unknown error occurred.",
         });
+    }
+});
+// ============================================================================
+// CLOUD FUNCTION 4: CLEANUP DELETED ARTICLE IMAGES
+// ============================================================================
+/**
+ * Automatically delete images from Storage when an article is deleted
+ * This prevents orphaned files and saves storage costs
+ */
+exports.cleanupArticleImage = (0, firestore_1.onDocumentDeleted)({
+    document: "generated_articles/{articleId}",
+    region: "us-central1",
+}, async (event) => {
+    const deletedArticle = event.data?.data();
+    if (!deletedArticle?.imageUrl) {
+        logger.info("No imageUrl found in deleted article, skipping cleanup.");
+        return;
+    }
+    // Skip base64 images (backward compatibility)
+    if (deletedArticle.imageUrl.startsWith('data:')) {
+        logger.info("Deleted article has base64 image, skipping cleanup.");
+        return;
+    }
+    // Extract storage path and delete
+    const storagePath = extractStoragePathFromUrl(deletedArticle.imageUrl);
+    if (storagePath) {
+        try {
+            await admin.storage().bucket().file(storagePath).delete();
+            logger.info(`Successfully deleted image: ${storagePath}`);
+        }
+        catch (error) {
+            logger.warn(`Failed to delete image ${storagePath}:`, error.message);
+        }
+    }
+    else {
+        logger.warn(`Could not extract storage path from URL: ${deletedArticle.imageUrl}`);
     }
 });
 //# sourceMappingURL=index.js.map

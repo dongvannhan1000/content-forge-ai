@@ -37,6 +37,7 @@ export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, 
           <img
             src={article.imageUrl || "/placeholder.svg"}
             alt={article.title}
+            loading="lazy"
             className={`w-full object-cover transition-all duration-300 ${isExpanded ? 'h-auto max-h-96' : 'h-48'}`}
           />
         </div>
