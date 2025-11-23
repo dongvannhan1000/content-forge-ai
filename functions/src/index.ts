@@ -861,3 +861,91 @@ export const cleanupArticleImage = onDocumentDeleted({
     logger.warn(`Could not extract storage path from URL: ${deletedArticle.imageUrl}`);
   }
 });
+
+// ============================================================================
+// CLOUD FUNCTION 5: CHECK SCHEDULED ARTICLES (V2 - from generated_articles)
+// ============================================================================
+
+/**
+ * V2 version that checks scheduled articles directly from generated_articles collection
+ * instead of using a separate schedules collection
+ * Runs every 5 minutes to check and publish scheduled articles
+ */
+export const checkScheduledArticlesV2 = onSchedule(
+  "every 5 minutes",
+  async (event) => {
+    const now = admin.firestore.Timestamp.now();
+    logger.info(`[V2] Running scheduled articles check at: ${event.scheduleTime}`);
+
+    // Query articles that are scheduled and due for posting
+    const query = db.collection("generated_articles")
+      .where("status", "==", "scheduled")
+      .where("scheduledAt", "<=", now);
+
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+      logger.info("[V2] No scheduled articles are due for posting.");
+      return;
+    }
+
+    logger.info(`[V2] Found ${snapshot.size} articles to post.`);
+
+    const postPromises = snapshot.docs.map(async (doc) => {
+      const article = doc.data();
+      const articleId = doc.id;
+
+      try {
+        if (!article.userId) {
+          throw new Error(`Article ${articleId} is missing a userId.`);
+        }
+
+        // Get user's webhook URL from settings
+        const userDoc = await db.collection("users").doc(article.userId).get();
+        if (!userDoc.exists) {
+          throw new Error(`User document not found for userId: ${article.userId}`);
+        }
+
+        const userData = userDoc.data() as UserSettings;
+        const { webhookUrl } = userData.settings.integration;
+
+        if (!webhookUrl) {
+          logger.warn(
+            `[V2] No webhook URL for user ${article.userId}. Article ${articleId} will remain scheduled.`
+          );
+          return;
+        }
+
+        // Post to webhook
+        logger.info(`[V2] Posting article ${articleId} to webhook...`);
+        const response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: article.title,
+            content: article.content,
+            imageUrl: article.imageUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorBody = await response.text();
+          throw new Error(`Webhook call failed with status ${response.status}: ${errorBody}`);
+        }
+
+        // Update article status to published
+        await doc.ref.update({
+          status: "published",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.info(`[V2] Successfully posted article ${articleId}. Updated status to published.`);
+      } catch (error: any) {
+        logger.error(`[V2] Error processing article ${articleId}:`, error.message);
+        // Don't update status on error - article remains scheduled for retry
+      }
+    });
+
+    await Promise.all(postPromises);
+    logger.info("[V2] Finished processing scheduled articles batch.");
+  });

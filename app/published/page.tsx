@@ -4,59 +4,35 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { usePublishedArticles } from '@/hooks/useArticles';
-import { useSettingsContext } from '@/contexts/settings-context';
 import { Article } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Edit, Copy, Eye } from 'lucide-react';
-import { EditArticleModal } from '@/components/modals/edit-article-modal';
-import * as articleService from '@/services/article.service';
+import { PublishedArticleCard } from '@/components/published/published-article-card';
+import { ViewArticleModal } from '@/components/modals/view-article-modal';
 
 export default function PublishedPage() {
-  const { articles, updateArticle, addArticle, deleteArticle } = usePublishedArticles();
-  const { settings } = useSettingsContext();
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const { articles, addArticle, deleteArticle } = usePublishedArticles();
+  const [viewingArticle, setViewingArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [platformFilter, setPlatformFilter] = useState<string>('');
 
-  // No need to filter by status or check scheduled date - articles are already published
-  const filteredArticles = articles.filter(article => {
-    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPlatform = !platformFilter || article.platforms?.includes(platformFilter);
-    return matchesSearch && matchesPlatform;
-  });
+  const filteredArticles = articles.filter(article =>
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    article.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleDuplicateToDraft = (article: Article) => {
+  const handleDuplicate = (article: Article) => {
     const { id, ...rest } = article;
     addArticle({
       ...rest,
       status: 'draft',
-      createdAt: new Date(), // New createdAt for the duplicate
+      createdAt: new Date(),
+      scheduledAt: undefined,
     });
   };
 
-  const handleSchedule = (article: Article) => {
+  const handleDelete = (article: Article) => {
     if (!article.id) return;
-    updateArticle(article.id, { status: 'draft' });
-  };
-
-  const handleRegenerateText = async (
-    article: Article,
-    customPrompt: string
-  ): Promise<{ title: string; content: string }> => {
-    return await articleService.regenerateArticleText(article, customPrompt);
-  };
-
-  const handleRegenerateImagePrompt = async (
-    article: Article,
-    customPrompt: string,
-    suffix: string
-  ): Promise<string> => {
-    return await articleService.regenerateImagePrompt(article, customPrompt, suffix);
-  };
-
-  const handleGenerateImage = async (imagePrompt: string): Promise<string> => {
-    return await articleService.generateImageFromPrompt(imagePrompt);
+    if (confirm('Delete this published article? This action cannot be undone.')) {
+      deleteArticle(article.id);
+    }
   };
 
   return (
@@ -66,117 +42,51 @@ export default function PublishedPage() {
         <Header />
         <main className="flex-1 overflow-y-auto">
           <div className="p-6 max-w-7xl mx-auto">
+            {/* Header */}
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-foreground mb-4">Published Articles</h1>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Search */}
+              <div className="max-w-md">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search articles..."
-                  className="px-4 py-2 bg-card border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 bg-card border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <select
-                  value={platformFilter}
-                  onChange={(e) => setPlatformFilter(e.target.value)}
-                  className="px-4 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">All Platforms</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="LinkedIn">LinkedIn</option>
-                  <option value="Twitter">Twitter</option>
-                  <option value="Blog">Blog</option>
-                </select>
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              {filteredArticles.length === 0 ? (
-                <div className="p-12 text-center">
-                  <p className="text-muted-foreground">No published articles yet</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Title</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Content Preview</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Thumbnail</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Published Date</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Platforms</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredArticles.map(article => (
-                        <tr key={article.id} className="border-b border-border hover:bg-secondary/50 transition-colors">
-                          <td className="px-6 py-4 font-medium text-foreground">{article.title}</td>
-                          <td className="px-6 py-4">
-                            <p className="text-sm text-muted-foreground line-clamp-1">{article.content}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            {article.imageUrl && (
-                              <img src={article.imageUrl || "/placeholder.svg"} alt={article.title} className="w-12 h-12 rounded object-cover" />
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-foreground">
-                            {article.scheduledAt?.toDate?.()?.toLocaleDateString() ||
-                              article.createdAt?.toDate?.()?.toLocaleDateString() ||
-                              'N/A'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2 flex-wrap">
-                              {article.platforms?.map(platform => (
-                                <Badge key={platform} className="bg-accent/20 text-foreground">
-                                  {platform}
-                                </Badge>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setEditingArticle(article)}
-                                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                              >
-                                <Eye className="w-4 h-4 text-muted-foreground" />
-                              </button>
-                              <button
-                                onClick={() => handleDuplicateToDraft(article)}
-                                className="p-2 hover:bg-secondary rounded-lg transition-colors"
-                              >
-                                <Copy className="w-4 h-4 text-muted-foreground" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            {/* Articles Grid */}
+            {filteredArticles.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl p-12 text-center">
+                <p className="text-muted-foreground">
+                  {searchQuery ? 'No articles match your search' : 'No published articles yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredArticles.map(article => (
+                  <PublishedArticleCard
+                    key={article.id}
+                    article={article}
+                    onView={() => setViewingArticle(article)}
+                    onDuplicate={() => handleDuplicate(article)}
+                    onDelete={() => handleDelete(article)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </main>
       </div>
 
-      {editingArticle && (
-        <EditArticleModal
-          article={editingArticle}
-          systemPrompt={settings.ai.systemPrompt}
-          imagePromptSuffix={settings.vision.imagePromptSuffix}
-          onSave={(updated) => {
-            if (editingArticle.id) {
-              updateArticle(editingArticle.id, updated);
-            }
-            setEditingArticle(null);
-          }}
-          onClose={() => setEditingArticle(null)}
-          onRegenerateText={handleRegenerateText}
-          onRegenerateImagePrompt={handleRegenerateImagePrompt}
-          onGenerateImage={handleGenerateImage}
+      {/* View Modal */}
+      {viewingArticle && (
+        <ViewArticleModal
+          article={viewingArticle}
+          onClose={() => setViewingArticle(null)}
         />
       )}
     </div>
