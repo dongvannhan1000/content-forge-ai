@@ -147,7 +147,7 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <h3 className="text-sm font-medium text-foreground mb-3">Platform Integrations</h3>
                 <div className="space-y-3">
                   <PlatformIntegrationToggle
@@ -180,7 +180,7 @@ export default function SettingsPage() {
                     onWebhookChange={(url) => handlePlatformWebhookChange('instagram', url)}
                   />
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 

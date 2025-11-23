@@ -52,6 +52,7 @@ export function useGenerationJob() {
         topic?: string;
         count: number;
         imageFiles?: File[];
+        language?: string; // Optional: prioritize form language over settings
     }) => {
         if (!user) {
             setError('User must be authenticated');
@@ -76,7 +77,7 @@ export function useGenerationJob() {
                 mode: jobData.mode,
                 topic: jobData.topic,
                 count: jobData.count,
-                language: settings.ai.contentLanguage,
+                language: jobData.language || settings.ai.contentLanguage, // Prioritize form language
                 systemPrompt: settings.ai.systemPrompt,
                 imagePromptSuffix: settings.vision.imagePromptSuffix,
                 imageUrls: imageUrls,
@@ -89,7 +90,7 @@ export function useGenerationJob() {
                 mode: jobData.mode,
                 topic: jobData.topic,
                 count: jobData.count,
-                language: settings.ai.contentLanguage,
+                language: jobData.language || settings.ai.contentLanguage, // Prioritize form language
                 systemPrompt: settings.ai.systemPrompt,
                 imagePromptSuffix: settings.vision.imagePromptSuffix,
                 imageUrls: imageUrls,

@@ -36,14 +36,17 @@ export default function GeneratorPage() {
     if (mode === 'topics') {
       jobData.topic = data.topic;
       jobData.count = data.count || 1;
+      jobData.language = data.language; // Pass language from form
     } else if (mode === 'image') {
       // For image mode, pass the image files to the hook
       // The hook will upload them and set count based on number of images
       jobData.imageFiles = data.imageFiles;
       jobData.count = data.imageFiles?.length || 1;
+      jobData.language = data.language; // Pass language from form
     } else if (mode === 'website') {
       jobData.topic = `Content from ${data.url}`;
       jobData.count = 1;
+      jobData.language = data.language; // Pass language from form
     }
 
     await createJob(jobData);

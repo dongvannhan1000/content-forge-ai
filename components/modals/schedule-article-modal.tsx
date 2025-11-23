@@ -15,8 +15,18 @@ const PLATFORMS = ['Facebook', 'LinkedIn', 'Twitter', 'Blog', 'Newsletter'];
 const TIMEZONES = ['EST', 'CST', 'MST', 'PST', 'UTC', 'GMT'];
 
 export function ScheduleArticleModal({ article, onSchedule, onClose }: ScheduleArticleModalProps) {
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  // Set default time to 1 hour from now
+  const getDefaultDateTime = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().slice(0, 5);
+    return { dateStr, timeStr };
+  };
+
+  const { dateStr: defaultDate, timeStr: defaultTime } = getDefaultDateTime();
+  const [date, setDate] = useState(defaultDate);
+  const [time, setTime] = useState(defaultTime);
   const [timezone, setTimezone] = useState('UTC');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 
@@ -29,7 +39,7 @@ export function ScheduleArticleModal({ article, onSchedule, onClose }: ScheduleA
   };
 
   const handleSchedule = () => {
-    if (date && time && selectedPlatforms.length > 0) {
+    if (date && time) {
       const scheduleDate = new Date(`${date}T${time}`);
       onSchedule(article, selectedPlatforms, scheduleDate, time, timezone);
       onClose();
@@ -67,7 +77,7 @@ export function ScheduleArticleModal({ article, onSchedule, onClose }: ScheduleA
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-foreground mb-2">Timezone</label>
             <select
               value={timezone}
@@ -78,9 +88,9 @@ export function ScheduleArticleModal({ article, onSchedule, onClose }: ScheduleA
                 <option key={tz} value={tz}>{tz}</option>
               ))}
             </select>
-          </div>
+          </div> */}
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-foreground mb-3">Platforms</label>
             <div className="grid grid-cols-2 gap-2">
               {PLATFORMS.map(platform => (
@@ -97,14 +107,14 @@ export function ScheduleArticleModal({ article, onSchedule, onClose }: ScheduleA
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="p-6 border-t border-border flex gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
           <Button
             onClick={handleSchedule}
-            disabled={!date || !time || selectedPlatforms.length === 0}
+            disabled={!date || !time}
             className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
           >
             Schedule
