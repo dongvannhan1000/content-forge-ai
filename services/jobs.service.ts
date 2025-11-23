@@ -37,19 +37,30 @@ export async function createGenerationJob(
     }
 
     try {
-        const docRef = await addDoc(collection(db, JOBS_COLLECTION), {
+        // Prepare job data and remove undefined values (Firestore doesn't support undefined)
+        const jobDocument: any = {
             userId,
-            topic: jobData.topic,
             count: jobData.count,
             mode: jobData.mode,
             language: jobData.language,
             systemPrompt: jobData.systemPrompt,
-            imagePromptSuffix: jobData.imagePromptSuffix,
-            imageUrls: jobData.imageUrls, // Include imageUrls for image mode
             status: 'pending',
             progress: 0,
             createdAt: Timestamp.now(),
-        });
+        };
+
+        // Add optional fields only if they are defined
+        if (jobData.topic !== undefined) {
+            jobDocument.topic = jobData.topic;
+        }
+        if (jobData.imagePromptSuffix !== undefined) {
+            jobDocument.imagePromptSuffix = jobData.imagePromptSuffix;
+        }
+        if (jobData.imageUrls !== undefined) {
+            jobDocument.imageUrls = jobData.imageUrls;
+        }
+
+        const docRef = await addDoc(collection(db, JOBS_COLLECTION), jobDocument);
 
         return docRef.id;
     } catch (error: any) {
