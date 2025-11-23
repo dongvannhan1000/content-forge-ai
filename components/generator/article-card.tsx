@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Article } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Clock, Send, Loader2 } from 'lucide-react';
+import { Edit, Trash2, Clock, Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ArticleCardProps {
   article: Article;
@@ -27,10 +28,18 @@ const STATUS_COLORS: Record<Article['status'], string> = {
 };
 
 export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, isPosting }: ArticleCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary transition-colors">
       {article.imageUrl && (
-        <img src={article.imageUrl || "/placeholder.svg"} alt={article.title} className="w-full h-40 object-cover" />
+        <div className={`relative overflow-hidden transition-all duration-300 ${isExpanded ? 'h-auto' : 'h-48'}`}>
+          <img
+            src={article.imageUrl || "/placeholder.svg"}
+            alt={article.title}
+            className={`w-full object-cover transition-all duration-300 ${isExpanded ? 'h-auto max-h-96' : 'h-48'}`}
+          />
+        </div>
       )}
       <div className="p-4">
         <div className="flex gap-2 mb-3">
@@ -41,7 +50,36 @@ export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, 
         </div>
 
         <h3 className="font-bold text-foreground mb-2 line-clamp-2">{article.title}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{article.content}</p>
+
+        {/* Content with proper formatting preservation */}
+        <div className="mb-4">
+          <p
+            className={`text-sm text-muted-foreground whitespace-pre-wrap transition-all duration-300 ${isExpanded ? '' : 'line-clamp-4'
+              }`}
+          >
+            {article.content}
+          </p>
+
+          {/* Expand/Collapse button */}
+          {article.content && article.content.length > 150 && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="w-3 h-3" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3" />
+                  Show more
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
         {article.scheduledAt && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">

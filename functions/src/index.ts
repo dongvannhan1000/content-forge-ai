@@ -644,36 +644,80 @@ export const processBatchGenerationJobV2 = onDocumentCreated({
 
       logger.info(`[JobV2 ${jobId}] Generating article ${i}/${jobData.count}`);
 
-      // 1. Generate article text
-      logger.info(`[JobV2 ${jobId}] Calling Gemini Pro for text generation...`);
-      const topicText = jobData.topic || "general content";
-      const textResponse = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
-        contents: `Generate one social media post about the following topic: "${topicText}". The post must be written in ${jobData.language}.`,
-        config: {
-          systemInstruction: jobData.systemPrompt,
-          responseMimeType: "application/json",
-          responseSchema: articleSchema,
-        },
-      });
-      const articleText = JSON.parse(textResponse.text!.trim());
-      logger.info(`[JobV2 ${jobId}] Text generation successful.`);
-
-      // Apply imagePromptSuffix if provided
-      if (jobData.imagePromptSuffix && articleText.imagePrompt) {
-        articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
-      }
-
+      let articleText: any;
       let imageUrl: string;
 
-      // 2. Check if we should use uploaded image or generate new one
-      if (jobData.imageUrls && jobData.imageUrls.length > 0) {
-        // Use the uploaded image URL (matching by index)
+      // Check mode and generate content accordingly
+      if (jobData.mode === 'image' && jobData.imageUrls && jobData.imageUrls.length > 0) {
+        // IMAGE MODE: Analyze uploaded image using vision AI
+        logger.info(`[JobV2 ${jobId}] Image mode detected. Analyzing uploaded image...`);
+
         const imageIndex = i - 1; // Convert to 0-based index
-        imageUrl = jobData.imageUrls[imageIndex] || jobData.imageUrls[0]; // Fallback to first image
-        logger.info(`[JobV2 ${jobId}] Using uploaded image URL for article ${i}.`);
+        const uploadedImageUrl = jobData.imageUrls[imageIndex] || jobData.imageUrls[0];
+
+        try {
+          // Fetch image from Firebase Storage URL
+          const imageResponse = await fetch(uploadedImageUrl);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image from URL: ${uploadedImageUrl}`);
+          }
+
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+          const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+
+          // Prepare image and text parts for vision model
+          const imagePart = {
+            inlineData: {
+              data: imageBase64,
+              mimeType: mimeType,
+            },
+          };
+          const textPart = {
+            text: `Describe this image and write a social media post about it in ${jobData.language}. Provide a title, content, and a new image prompt to recreate a similar, high-quality image.`
+          };
+
+          // Use vision model to analyze image and generate content
+          logger.info(`[JobV2 ${jobId}] Calling Gemini Flash with vision for image analysis...`);
+          const visionResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, textPart] },
+            config: {
+              systemInstruction: jobData.systemPrompt || 'You are an expert social media manager specializing in viral content.',
+              responseMimeType: "application/json",
+              responseSchema: articleSchema,
+            }
+          });
+
+          articleText = JSON.parse(visionResponse.text!.trim());
+          imageUrl = uploadedImageUrl; // Use the uploaded image, don't generate new one
+          logger.info(`[JobV2 ${jobId}] Vision-based content generation successful.`);
+        } catch (error: any) {
+          logger.error(`[JobV2 ${jobId}] Error processing image:`, error);
+          throw error;
+        }
       } else {
-        // Generate image using Imagen
+        // TOPICS/WEBSITE MODE: Generate from text
+        logger.info(`[JobV2 ${jobId}] Text mode detected. Calling Gemini Pro for text generation...`);
+        const topicText = jobData.topic || "general content";
+        const textResponse = await ai.models.generateContent({
+          model: "gemini-2.5-pro",
+          contents: `Generate one social media post about the following topic: "${topicText}". The post must be written in ${jobData.language}.`,
+          config: {
+            systemInstruction: jobData.systemPrompt,
+            responseMimeType: "application/json",
+            responseSchema: articleSchema,
+          },
+        });
+        articleText = JSON.parse(textResponse.text!.trim());
+        logger.info(`[JobV2 ${jobId}] Text generation successful.`);
+
+        // Apply imagePromptSuffix if provided
+        if (jobData.imagePromptSuffix && articleText.imagePrompt) {
+          articleText.imagePrompt = `${articleText.imagePrompt.trim()}, ${jobData.imagePromptSuffix}`;
+        }
+
+        // Generate new image using Imagen
         logger.info(`[JobV2 ${jobId}] Calling Imagen for image generation...`);
         const imageResponse = await ai.models.generateImages({
           model: "imagen-4.0-generate-001",
