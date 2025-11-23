@@ -21,7 +21,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function GeneratorPage() {
   const [mode, setMode] = useState<GenerationMode>('topics');
-  const { articles, updateArticle, deleteArticle } = useArticles();
+  const { articles, updateArticle, deleteArticle, isLoading } = useArticles();
   const [editingArticle, setEditingArticle] = useState<GeneratedArticle | null>(null);
   const [schedulingArticle, setSchedulingArticle] = useState<GeneratedArticle | null>(null);
   const { isGenerating, progress, createJob } = useGenerationJob();
@@ -89,9 +89,10 @@ export default function GeneratorPage() {
     try {
       await articleService.postArticleToWebhook(article, webhookUrl);
 
-      // Update article status to published
+      // Update article status to published with current timestamp
       await updateArticle(article.id, {
         status: 'published',
+        scheduledAt: new Date(), // Set published time to now
       });
 
       toast({
@@ -162,7 +163,15 @@ export default function GeneratorPage() {
                 <h2 className="text-lg font-bold text-foreground mb-4">
                   Generated Articles ({articles.length})
                 </h2>
-                {articles.length === 0 ? (
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-32 bg-secondary/50 rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
+                ) : articles.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground mb-2">No articles generated yet</p>
                     <p className="text-sm text-muted-foreground">Fill out the form and click generate to create content</p>

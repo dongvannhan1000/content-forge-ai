@@ -9,9 +9,10 @@ import { Article } from '@/types';
 import { ScheduledArticleCard } from '@/components/schedule/scheduled-article-card';
 import { ViewArticleModal } from '@/components/modals/view-article-modal';
 import { ScheduleArticleModal } from '@/components/modals/schedule-article-modal';
+import { ArticleCardsGridSkeleton } from '@/components/ui/skeletons';
 
 export default function SchedulePage() {
-  const { articles, updateArticle } = useScheduledArticles();
+  const { articles, updateArticle, isLoading } = useScheduledArticles();
   const { settings } = useSettingsContext();
   const [viewingArticle, setViewingArticle] = useState<Article | null>(null);
   const [reschedulingArticle, setReschedulingArticle] = useState<Article | null>(null);
@@ -64,7 +65,9 @@ export default function SchedulePage() {
             </div>
 
             {/* Articles Grid */}
-            {filteredArticles.length === 0 ? (
+            {isLoading ? (
+              <ArticleCardsGridSkeleton count={6} />
+            ) : filteredArticles.length === 0 ? (
               <div className="bg-card border border-border rounded-xl p-12 text-center">
                 <p className="text-muted-foreground">
                   {searchQuery ? 'No articles match your search' : 'No scheduled articles yet'}

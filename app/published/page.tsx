@@ -7,9 +7,10 @@ import { usePublishedArticles } from '@/hooks/useArticles';
 import { Article } from '@/types';
 import { PublishedArticleCard } from '@/components/published/published-article-card';
 import { ViewArticleModal } from '@/components/modals/view-article-modal';
+import { ArticleCardsGridSkeleton } from '@/components/ui/skeletons';
 
 export default function PublishedPage() {
-  const { articles, addArticle, deleteArticle } = usePublishedArticles();
+  const { articles, addArticle, deleteArticle, isLoading } = usePublishedArticles();
   const [viewingArticle, setViewingArticle] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -59,7 +60,9 @@ export default function PublishedPage() {
             </div>
 
             {/* Articles Grid */}
-            {filteredArticles.length === 0 ? (
+            {isLoading ? (
+              <ArticleCardsGridSkeleton count={6} />
+            ) : filteredArticles.length === 0 ? (
               <div className="bg-card border border-border rounded-xl p-12 text-center">
                 <p className="text-muted-foreground">
                   {searchQuery ? 'No articles match your search' : 'No published articles yet'}
