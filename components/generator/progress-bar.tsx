@@ -1,12 +1,15 @@
 'use client';
 
+import { X } from 'lucide-react';
+
 export interface ProgressBarProps {
   total: number;
   completed: number;
   isVisible: boolean;
+  onCancel?: () => void;
 }
 
-export function ProgressBar({ total, completed, isVisible }: ProgressBarProps) {
+export function ProgressBar({ total, completed, isVisible, onCancel }: ProgressBarProps) {
   if (!isVisible || total === 0) return null;
 
   const percentage = Math.round((completed / total) * 100);
@@ -18,9 +21,20 @@ export function ProgressBar({ total, completed, isVisible }: ProgressBarProps) {
           <span className="text-sm font-medium text-foreground">
             Generating content
           </span>
-          <span className="text-sm text-muted-foreground">
-            {completed} of {total}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {completed} of {total}
+            </span>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="p-1 hover:bg-destructive/20 rounded transition-colors group"
+                title="Cancel generation"
+              >
+                <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive transition-colors" />
+              </button>
+            )}
+          </div>
         </div>
         <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
           <div

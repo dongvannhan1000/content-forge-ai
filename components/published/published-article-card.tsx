@@ -59,7 +59,7 @@ export function PublishedArticleCard({ article, onView, onDuplicate, onDelete }:
                         variant="outline"
                         size="sm"
                         onClick={onView}
-                        className="flex-1 flex items-center gap-2"
+                        className="flex-1 flex items-center gap-2 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-colors"
                     >
                         <Eye className="w-4 h-4" />
                         View
@@ -68,7 +68,7 @@ export function PublishedArticleCard({ article, onView, onDuplicate, onDelete }:
                         variant="outline"
                         size="sm"
                         onClick={onDuplicate}
-                        className="flex-1 flex items-center gap-2"
+                        className="flex-1 flex items-center gap-2 hover:!bg-accent/20 hover:!border-accent hover:!text-accent-foreground transition-colors"
                     >
                         <Copy className="w-4 h-4" />
                         Duplicate
@@ -77,7 +77,7 @@ export function PublishedArticleCard({ article, onView, onDuplicate, onDelete }:
                         variant="outline"
                         size="sm"
                         onClick={onDelete}
-                        className="hover:bg-destructive/10 hover:text-destructive"
+                        className="hover:bg-destructive/20 hover:border-destructive hover:text-destructive transition-colors"
                     >
                         <Trash2 className="w-4 h-4" />
                     </Button>

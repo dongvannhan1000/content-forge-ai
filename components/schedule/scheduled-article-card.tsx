@@ -78,7 +78,7 @@ export function ScheduledArticleCard({ article, onView, onReschedule, onCancel }
                         variant="outline"
                         size="sm"
                         onClick={onView}
-                        className="flex-1 flex items-center gap-2"
+                        className="flex-1 flex items-center gap-2 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-colors"
                     >
                         <Eye className="w-4 h-4" />
                         View
@@ -87,7 +87,7 @@ export function ScheduledArticleCard({ article, onView, onReschedule, onCancel }
                         variant="outline"
                         size="sm"
                         onClick={onReschedule}
-                        className="flex-1"
+                        className="flex-1 hover:!bg-accent/20 hover:!border-accent hover:!text-accent-foreground transition-colors"
                     >
                         Reschedule
                     </Button>
@@ -95,7 +95,7 @@ export function ScheduledArticleCard({ article, onView, onReschedule, onCancel }
                         variant="outline"
                         size="sm"
                         onClick={onCancel}
-                        className="hover:bg-destructive/10 hover:text-destructive"
+                        className="hover:bg-destructive/20 hover:border-destructive hover:text-destructive transition-colors"
                     >
                         <X className="w-4 h-4" />
                     </Button>

@@ -105,7 +105,12 @@ export function EditArticleModal({
             {imageUrl && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Image Preview</label>
-                <img src={imageUrl} alt="Article" loading="lazy" className="w-full h-48 object-cover rounded-lg" />
+                <img
+                  src={imageUrl}
+                  alt="Article"
+                  loading="lazy"
+                  className="w-full h-auto max-h-96 object-contain rounded-lg border border-border"
+                />
                 <Button
                   variant="outline"
                   className="mt-2 w-full flex items-center gap-2"

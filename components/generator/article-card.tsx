@@ -52,60 +52,49 @@ export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, 
 
         <h3 className="font-bold text-foreground mb-2 line-clamp-2">{article.title}</h3>
 
-        {/* Content with proper formatting preservation */}
-        <div className="mb-4">
+        <div className="relative">
           <p
-            className={`text-sm text-muted-foreground whitespace-pre-wrap transition-all duration-300 ${isExpanded ? '' : 'line-clamp-4'
+            className={`text-sm text-muted-foreground transition-all duration-300 ${isExpanded ? '' : 'line-clamp-3'
               }`}
           >
             {article.content}
           </p>
-
-          {/* Expand/Collapse button */}
-          {article.content && article.content.length > 150 && (
+          {article.content.length > 200 && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="mt-2 text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+              className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
             >
               {isExpanded ? (
                 <>
-                  <ChevronUp className="w-3 h-3" />
-                  Show less
+                  Show less <ChevronUp className="w-3 h-3" />
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-3 h-3" />
-                  Show more
+                  Show more <ChevronDown className="w-3 h-3" />
                 </>
               )}
             </button>
           )}
         </div>
 
-        {article.scheduledAt && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-            <Clock className="w-4 h-4" />
-            {article.scheduledAt.toLocaleDateString()} at {article.scheduledAt.toLocaleTimeString()}
-          </div>
-        )}
-
-        <div className="flex gap-2">
+        {/* Actions - NOW WITH PROPER HOVER EFFECTS */}
+        <div className="flex gap-2 mt-4">
           <Button
-            size="sm"
             variant="outline"
+            size="sm"
             onClick={onEdit}
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-colors"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-4 h-4 mr-2" />
             Edit
           </Button>
           <Button
-            size="sm"
             variant="outline"
+            size="sm"
             onClick={onSchedule}
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 hover:!bg-accent/20 hover:!border-accent hover:!text-accent-foreground transition-colors"
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="w-4 h-4 mr-2" />
             Schedule
           </Button>
           {onPostNow && article.status === 'draft' && (
@@ -114,27 +103,29 @@ export function ArticleCard({ article, onEdit, onSchedule, onDelete, onPostNow, 
               variant="default"
               onClick={onPostNow}
               disabled={isPosting}
-              className="flex-1 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white transition-colors"
             >
               {isPosting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Posting...
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 mr-2" />
                   Post Now
                 </>
               )}
             </Button>
           )}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onDelete}
-            className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+            className="hover:bg-destructive/20 hover:border-destructive hover:text-destructive transition-colors"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>
