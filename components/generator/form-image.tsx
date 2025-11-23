@@ -132,7 +132,7 @@ export function FormImage({ onGenerate }: FormImageProps) {
         </label>
       </div>
 
-      <div>
+      {/* <div>
         <label className="block text-sm font-medium text-foreground mb-2">Additional Instructions</label>
         <textarea
           value={instructions}
@@ -141,7 +141,7 @@ export function FormImage({ onGenerate }: FormImageProps) {
           rows={3}
           className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
         />
-      </div>
+      </div> */}
 
       <div>
         <label className="block text-sm font-medium text-foreground mb-2">Tone</label>
