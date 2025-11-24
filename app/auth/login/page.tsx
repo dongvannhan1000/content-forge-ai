@@ -36,7 +36,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-card border border-border rounded-xl p-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground mb-6">Sign in to your AI Content Studio account</p>
+          <p className="text-muted-foreground mb-6">Sign in to your ContentForge AI account</p>
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
